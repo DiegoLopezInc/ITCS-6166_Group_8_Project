@@ -59,8 +59,8 @@ To simulate the network, we are using Mininet to create a virtual SDON with an 8
 
 ### 7. References  
 - **arXiv Paper**: "Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud" (https://arxiv.org/html/2402.09527v1#S10) – Core inspiration for multicast tree design and fairness in cloud environments, guiding the optimization algorithm and simulation approach.  
-- **ACM Paper**: "CloudEx: A Fair-Access Financial Exchange in the Cloud" (Ghalayini et al., HotOS '21, https://dl.acm.org/doi/10.1145/3458336.3465292) – Provided baseline fairness mechanisms (hold-and-release) for comparison with Jasper’s multicast solution.  
-- **arXiv Paper**: "DBO: Fairness for Cloud-Hosted Financial Exchanges" (Gupta et al., ACM SIGCOMM '23, https://arxiv.org/abs/2308.01370) – Offered an alternative latency-correction approach to evaluate against Jasper, enriching the fairness analysis.  
+- **ACM Paper**: "CloudEx: A Fair-Access Financial Exchange in the Cloud" (Ghalayini et al., HotOS '21, https://dl.acm.org/doi/abs/10.1145/3458336.3465278) – Provided baseline fairness mechanisms (hold-and-release) for comparison with Jasper’s multicast solution.  
+- **ACM Paper**: "DBO: Fairness for Cloud-Hosted Financial Exchanges" (Gupta et al., ACM SIGCOMM '23, https://doi.org/10.1145/3603269.3604871) – Offered an alternative latency-correction approach to evaluate against Jasper, enriching the fairness analysis.  
 - **Mininet Documentation**: Guided simulation environment setup and topology design (http://mininet.org/).  
 - **Ryu SDN Controller**: Used for managing the simulated SDON and integrating the digital twin (https://ryu-sdn.org/).  
 - **Textbook**: "Computer Networking: A Top-Down Approach" by Kurose & Ross – Referenced for SDN and optical networking fundamentals.
