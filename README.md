@@ -1,5 +1,5 @@
 # ITCS-6166_Group_8_Project  
-**Digital Twin Simulation and Multicast Optimization for Software-Defined Optical Networks in Financial Exchanges**    
+**Digital Twin Simulation and Multicast Optimization for Software-Defined Networks in Financial Exchanges**    
 Group #8: 
 - Diego Lopez (dlopez18@charlotte.edu)
 - Khushi Arvindbhai Kalathiya (kkalathi@charlotte.edu)
