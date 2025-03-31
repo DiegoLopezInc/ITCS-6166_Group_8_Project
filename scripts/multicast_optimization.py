@@ -1,7 +1,18 @@
 # Multicast Optimization Script
 # This script implements Jasper's multicast tree algorithm.
 
-# TODO: Implement multicast optimization
+# TODO: 
+# - 1) Fix the multicast configuration to get it to run
+# - 2) Create multi-layer proxies
+# - 3) Create proxies that dynamically layer themselves (?)
+# - 4) Implement VM hedging: 
+# - - "Each VM in the proxy tree receives messages from two or 
+# - - more different sources (i.e., parent and one or more aunts)
+# - - where the path lengths for all messages are the same.
+# - - A VM processes and forwards the message copy to children
+# - - that is received earliest and discards the rest."
+# - 5) Implement hold-and-release
+# - 6) Implement throughput + usability optimizations
 
 # IDEA: Create a publisher node that sends data to relay proxies
 # which then forward the data to subscribers  
@@ -46,7 +57,7 @@ class ProxyNode:
         # Bind the socket to listen to the multicast group
         self.group = (address, port)
         self.socket.bind(self.group)
-        # Convert group address into binary
+        # Convert address to binary and add the process to the multicast group (apparently IP_ADD_MEMBERSHIP needs the address to be in binary format)
         mreq = struct.pack("4sl", socket.inet_aton(address), socket.INADDR_ANY)
         # Join the multicast group as a listener
         self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
@@ -74,7 +85,7 @@ class Subscriber:
         # Bind the socket to listen to the multicast group
         group = (address, port)
         self.socket.bind(group)
-        # Convert address to binary and add the process to the multicast group
+        # Convert address to binary and add the process to the multicast group (apparently IP_ADD_MEMBERSHIP needs the address to be in binary format)
         mreq = struct.pack("4sl", socket.inet_aton(address), socket.INADDR_ANY)
         self.socket.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
