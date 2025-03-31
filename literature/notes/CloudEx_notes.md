@@ -26,7 +26,20 @@
 [Description of methods used]
 
 ## Results
-[Key findings and results]
+
+Unfairness: Definitions and Remedies
+- Inbound Unfairness Ratio
+    If gateway-assigned timestamp is earlier than the previous
+- Outbound Unfairness Ratio
+    If piece of market data is received later than other gateways
+- Sequencer Delay Parameters
+    Added delay to the sequencer buffer to ensure fairness
+- Hold/Release Buffer Delay Parameters
+    Added delay to the hold and release buffer to gateways to ensure fairness
+- Consequences for delays
+    Cause system to be less responsive
+    
+
 
 ## Relevance to Our Project
 [How this paper relates to your digital twin/SDON work]
