@@ -1,10 +1,18 @@
-# Paper Title
+# CloudEx: A Fair-Access Financial Exchange in theCloud
 
 ## Basic Information
 - **Authors:** 
-- **Publication Year:** 
-- **Journal/Conference:** 
-- **DOI/URL:** 
+- Ahmad Ghalayini - Stanford University, Stanford, USA
+- Jinkun Geng - Stanford University, Stanford, USA
+- Vighnesh Sachidananda - Stanford University, Stanford, USA
+- Vinay Sriram - Tick Tock Networks, Palo Alto, USA
+- Yilong Geng - Tick Tock Networks, Palo Alto, USA
+- Balaji Prabhakar - Stanford University, Stanford, USA
+- Mendel Rosenblum - Stanford University, Stanford, USA
+- Anirudh Sivaraman - NYU, New York, USA
+- **Publication Year:** 2021
+- **Journal/Conference:** ACM
+- **DOI/URL:** https://dl.acm.org/doi/abs/10.1145/3458336.3465278
 
 ## Summary
 [Brief summary of the paper in 2-3 paragraphs]

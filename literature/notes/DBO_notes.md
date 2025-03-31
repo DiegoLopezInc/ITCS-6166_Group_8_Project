@@ -1,10 +1,16 @@
-# Paper Title
+# DBO: Fairness for Cloud-Hosted Financial Exchange
 
 ## Basic Information
 - **Authors:** 
-- **Publication Year:** 
-- **Journal/Conference:** 
-- **DOI/URL:** 
+- Eashan Gupta - UIUC, Microsoft Research
+- Prateesh Goyal - Microsoft Research
+- Ilias Marinos - Microsoft Research
+- Chenxingyu Zhao - University of Washington, Microsoft Research
+- Radhika Mittal - UIUC
+- Ranveer Chandra - Microsoft Research
+- **Publication Year:** 2023
+- **Journal/Conference:** ACM SIGCOMM '23
+- **DOI/URL:** https://doi.org/10.1145/3603269.3604871
 
 ## Summary
 [Brief summary of the paper in 2-3 paragraphs]
