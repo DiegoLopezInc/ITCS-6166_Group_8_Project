@@ -6,7 +6,7 @@ Group #8:
 - Sach Denuwara (sdenuwar@charlotte.edu)
 - Thomas Macdougall (tmacdoug@charlotte.edu)
 
-Submission Date: March 31, 2025  
+Submission Date: April 16, 2025  
 ---
 
 ### 2. Project Abstract  
@@ -43,23 +43,10 @@ This project has been scaled down to a 4-hour mini-implementation that focuses o
 
 ---
 
-### 5. Implementation Plan (4 Hours)
-
-| Time | Task |
-|------|------|
-| 0:00-0:30 | Setup Mininet environment and install dependencies |
-| 0:30-1:15 | Create 4-node topology script with basic SDN controller |
-| 1:15-2:15 | Implement basic multicast and Jasper-inspired approaches |
-| 2:15-3:00 | Create simple traffic generator and benchmark script |
-| 3:00-3:45 | Implement comparison with latency and fairness metrics |
-| 3:45-4:00 | Final testing and documentation |
-
----
-
-### 6. Additional Notes  
+### 5. Additional Notes  
 To simulate the network, we are using Mininet to create a virtual SDN with a 4-node star topology, where each node represents an optical switch managed by an SDN controller (Ryu). The digital twin is implemented as a Python script that mirrors the network’s real-time state (e.g., link utilization, latency), updated via OpenFlow messages from Mininet. Multicast optimization, inspired by Jasper, is coded as a tree-building algorithm within the controller, distributing synthetic financial data to all nodes. We plan to measure performance metrics such as end-to-end delay, jitter, and fairness, comparing Jasper’s approach with a basic multicast approach, and visualize results using Matplotlib. The team, meets twice weekly to ensure steady progress. We’d appreciate instructor feedback on the simulation’s realism, traffic design, and fairness comparison scope in the future.
 
-### 6.1 Simulation Approach Explained  
+### 5.1 Simulation Approach Explained  
 1. **Tool Selection**: Mininet is chosen for its ability to emulate SDN environments, extended with Ryu for controller logic. Mininet’s flexibility allows us to approximate SDN behavior.
 2. **Topology**: A 4-node star topology mimics a small-scale exchange network, with high-bandwidth links (e.g., 10 Gbps) and low latency (e.g., 1 ms) to simulate realistic network conditions.
 3. **Digital Twin**: A Python script queries Mininet via OpenFlow to track network state (e.g., bandwidth usage, queue lengths), serving as the digital twin for real-time monitoring and optimization.
@@ -69,7 +56,7 @@ To simulate the network, we are using Mininet to create a virtual SDN with a 4-n
 
 ---
 
-### 7. Running the Project for Testing
+### 6. Running the Project for Testing
 
 #### Prerequisites
 - This project requires Mininet, which typically runs on Linux (Ubuntu is recommended)
@@ -128,10 +115,10 @@ The benchmark results will be saved in the `results` directory:
 
 ---
 
-## Project Overview
+### 7. Project Overview
 This mini-project simulates and compares multicast optimization strategies for software-defined networks (SDN) in financial exchanges. It is based on key ideas from CloudEx, Jasper, and DBO research papers, using a 4-node star topology in Mininet and a suite of SDN controllers and benchmarking tools.
 
-## Key Features
+### 7.1 Key Features
 - **Topologies:** 4-node star topology in Mininet
 - **Multicast Approaches:**
   - Basic Multicast (CloudEx-inspired, with clock sync and artificial delays)
@@ -146,7 +133,7 @@ This mini-project simulates and compares multicast optimization strategies for s
 - **Traffic Generation:** Simulated financial data packets
 - **Benchmarking:** Unified framework for running and comparing all approaches
 
-## File Structure
+### 7.2 File Structure
 - `topology/star_topology.py`: Mininet topology definition
 - `scripts/sdn_controller.py`: Basic SDN controller (CloudEx-inspired)
 - `scripts/jasper_multicast_controller.py`: Jasper-inspired fair multicast controller
@@ -156,7 +143,7 @@ This mini-project simulates and compares multicast optimization strategies for s
 - `run_benchmark.py`: Main script to run all benchmarks
 - `requirements.txt`: Dependencies
 
-## How to Run Experiments
+### 7.3 How to Run Experiments
 1. **Setup:**
    - Install dependencies: `pip install -r requirements.txt`
    - Ensure Mininet and Ryu are installed and working
@@ -167,29 +154,81 @@ This mini-project simulates and compares multicast optimization strategies for s
    - Edit `scripts/comparison_framework.py` to change test scenarios (duration, rate, message size)
    - Use setter methods in controllers to adjust delay, clock sync error, or fairness deadlines
 
-## Research Paper Features
+### 7.4 Research Paper Features
 - **CloudEx:** Simulated clock synchronization, artificial delays, dynamic delay adjustment
 - **Jasper:** Dynamic multicast tree, hold-and-release, fairness window
 - **DBO:** Clockless fairness, logical delivery clocks, post-hoc ordering
 
-## Metrics & Plots
+### 7.5 Metrics & Plots
 - Average latency
 - Jain's Fairness Index
 - Bandwidth efficiency
 - Fairness window (ms)
 - Delivery clock fairness (DBO)
 
-## References
+### 7.6 References
 - [CloudEx: A Fair-Access Financial Exchange in the Cloud]
 - [Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud]
 - [DBO: Fairness for Cloud-Hosted Financial Exchanges]
 
-## Contributors
-- [Your Name]
+### 7.7 Contributors
+- Diego Lopez (dlopez18@charlotte.edu)
+- Khushi Arvindbhai Kalathiya (kkalathi@charlotte.edu)
+- Sach Denuwara (sdenuwar@charlotte.edu)
+- Thomas Macdougall (tmacdoug@charlotte.edu)
 
 ---
 
-### 8. References  
+### 8. Dockerized Testing & Simulation
+
+This project supports full Docker-based simulation and benchmarking. You can use the provided Dockerfiles and docker-compose for reproducible experiments.
+
+#### 8.1 Build Docker Images
+
+```sh
+# Benchmark runner
+docker build -f Dockerfile.benchmark -t sdn-benchmark .
+
+# Mininet simulation environment
+docker build -f Dockerfile.mininet -t sdn-mininet .
+
+# Ryu controller (override CMD for Jasper or DBO controllers if needed)
+docker build -f Dockerfile.ryu -t sdn-ryu .
+```
+
+#### 8.2 Orchestrate with Docker Compose
+
+A sample `docker-compose.yml` is provided for orchestration. To bring up the full simulation:
+
+```sh
+docker-compose up --build
+```
+
+- The compose file launches:
+  - Mininet simulation container
+  - Ryu controller container (default: basic, can be set to Jasper/DBO)
+  - Benchmark runner (optional, for headless experiments)
+
+#### 8.3 Manual Testing
+
+- To run Mininet or Ryu containers interactively:
+  ```sh
+  docker run --rm -it --privileged sdn-mininet
+  docker run --rm -it -v $(pwd)/scripts:/app/scripts sdn-ryu ryu-manager scripts/dbo_multicast_controller.py
+  ```
+- To persist results, mount a volume:
+  ```sh
+  docker run --rm -v $(pwd)/results:/app/results sdn-benchmark
+  ```
+
+#### 8.4 Notes
+- Ensure you have Docker Desktop (with Linux containers) and Compose v2+ installed.
+- The Mininet container must run with `--privileged` for full network emulation.
+- For custom experiments, edit the compose file or run containers manually as above.
+
+---
+
+### 9. References  
 - **arXiv Paper**: "Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud" (https://arxiv.org/html/2402.09527v1#S10) – Core inspiration for multicast tree design and fairness in cloud environments.
 - **Mininet Documentation**: Guided simulation environment setup and topology design (http://mininet.org/).  
 - **Ryu SDN Controller**: Used for managing the simulated SDON (https://book.ryu-sdn.org/en/html/).
