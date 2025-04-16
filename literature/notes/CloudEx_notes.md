@@ -15,14 +15,18 @@
 - **DOI/URL:** https://dl.acm.org/doi/abs/10.1145/3458336.3465278
 
 ## Summary
-[Brief summary of the paper in 2-3 paragraphs]
+CloudEx proposes a cloud-hosted financial exchange that ensures fairness for all market participants despite unpredictable and variable cloud network latencies. The system uses high-precision software clock synchronization and dynamic message delays to equalize order and market data delivery times. CloudEx was refined through real-world deployments in academic courses, demonstrating its effectiveness and highlighting areas for further optimization.
+
+Key lessons include the feasibility of fair-access exchanges in the cloud, the importance of dynamic delay tuning, and the need for robust fault tolerance. The paper outlines future directions for performance improvements and broader applications beyond financial exchanges.
 
 ## Key Contributions
-- Contribution 1
-- Contribution 2
-- Contribution 3
+- Introduces CloudEx, a fair-access financial exchange system designed specifically for cloud environments.
+- Implements high-precision clock synchronization and dynamic message delay control to ensure fairness in order processing and market data dissemination.
+- Demonstrates the system in real-world academic deployments, providing empirical evidence of its effectiveness and areas for further refinement.
 
 ## Methodology
+CloudEx uses synchronized clocks and artificial message delays to equalize inbound and outbound latencies for all participants. Orders are replicated through multiple gateways to improve fault tolerance and reduce tail latency. The system employs a control strategy to dynamically tune delays based on observed unfairness ratios. Performance and fairness are evaluated through deployments with student participants, measuring order latency and fairness metrics. Future work is outlined for further optimization and broader applicability.
+
 Unfairness: Definitions and Remedies
 - Inbound Unfairness Ratio
     If gateway-assigned timestamp is earlier than the previous
@@ -84,7 +88,7 @@ Tested over two trading competitions:
 
 
 ## Relevance to Our Project
-[How this paper relates to your digital twin/SDON work]
+CloudEx's approach to fairness and latency management directly informs our SDN mini-project's multicast fairness and benchmarking. Its use of clock synchronization, message delay tuning, and empirical evaluation provides a strong foundation for designing and evaluating fair multicast strategies in our simulated financial exchange network.
 
 ## Key Figures
 [Reference to important figures/tables]

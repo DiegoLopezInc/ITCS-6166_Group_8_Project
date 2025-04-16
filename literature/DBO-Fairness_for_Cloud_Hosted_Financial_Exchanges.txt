@@ -1,0 +1,1294 @@
+DBO: Fairness for Cloud-Hosted Financial Exchanges
+EashanGupta PrateeshGoyal IliasMarinos
+UIUC,MicrosoftResearch MicrosoftResearch MicrosoftResearch
+ChenxingyuZhao RadhikaMittal RanveerChandra
+UniversityofWashington, UIUC MicrosoftResearch
+MicrosoftResearch
+Abstract tosignificantlyreducetheircapitalexpenditure,improvescalabil-
+ityandreduceoperationalburden.Keymarketparticipantsofsuch
+Weconsidertheproblemofhostingfinancialexchangesinthecloud.
+exchangeswouldsimilarlyprofitfromsuchmigrationastheyalso
+Exchangesnecessitatestrongfairnessguaranteesforcompetingpar-
+currentlymaintainanexpensiveon-premiseinfrastructurefordata
+ticipants,particularlyforusecasessuchas“highfrequencytrading”.
+analysisandregressionmodellingtoformulatetheirtradingstrate-
+Today,exchangesachievesuchguaranteesbyprovidingequalla-
+gies.ForcloudproviderssuchasAmazon,Google,andMicrosoft,
+tencyacrossallmarketparticipantsintheiron-premisedeployments.
+thisisabigbusinessopportunity.Migratingfinancialexchangesto
+However,ensuringequallatencyforfairnessisnotablychallenging
+thecloudisamutuallybeneficialundertakingforallpartiesinvolved.
+incurrentmulti-tenantclouddeployments,mainlyduetofactors
+To this end, cloud providers and financial exchanges have an-
+suchasnetworkcongestionandnon-equidistantnetworkpaths.
+nouncedlong-termpartnershipstofacilitatesuchamove[21,22].
+Inthispaper,weaddresstheproblemofunfairnessstemming
+Bothpartiesperceivethatthismigrationwillbequitechallenging,
+fromunpredictableandunboundednetworklatencyincloudnet-
+especiallywhenconsideringalldifferentworkloads(businesses)that
+works.Takinginspirationfromtheuseoflogicalclocksindistributed
+arecurrentlyaccommodatedintheexchanges’on-premiseinfras-
+systems,wepresentDeliveryBasedOrdering(DBO),anovelmech-
+tructure.Inthispaper,wefocuson“speedrace”trading[11,19]
+anism that guarantees fairness by post-hoc offsetting the latency
+whichisanimportantandhighlyprofitablebusinessforbothfinan-
+differencesamongmarketparticipantsinthecloud.Wethoroughly
+cialexchangesandthemarkettraders.Briefly,“speedrace”trading
+evaluateDBOinsimulation,abare-metaltestbedandapubliccloud
+isaformofsystematicelectronictradingwheremarketparticipants
+deployment, and we demonstrate that it is feasible to guarantee
+(MPs)usehigh-performancecomputerstoexecutestrategiesthataim
+fairnesswhileoperatingathightransactionrateswithasub-100µs
+torapidlyreactandexploitnewopportunitiespresentedinthemar-
+end-to-endlatency.
+ket(e.g.,duetovolatility,pricediscrepanciesetc).High-Frequency
+CCSConcepts Traders (HFTs) engage in such speed racing. HFTs invest large
+•Appliedcomputing→Onlineauctions;•Networks→Network amountsofmoneyforhardware,systemsandalgorithmicdevelop-
+protocoldesign;Networkarchitectures; menttoachieveimpressivelylowreactiontimes(µs-orevenns-
+scale).Thistradingbusinessisonlyviableifmarketparticipantscan
+Keywords
+competeinafairplaygroundguaranteedbytheCentralExchange
+Financialexchange,Logicalclock,Cloud,Fairness,HighFrequency Server(CES)operators.Equalityofopportunity–fairness–inthis
+Trading casemeansthatallmarketparticipantsmustgetprovablysimultane-
+ousaccesstomarketdata,aswellastheirsubsequenttradesmustbe
+ACMReferenceFormat:
+EashanGupta,PrateeshGoyal,IliasMarinos,ChenxingyuZhao,Radhika executedintheexactordertheyweregenerated(i.e.placedinthe
+Mittal,andRanveerChandra.2023.DBO:FairnessforCloud-HostedFinan- wire).
+cialExchanges.InACMSIGCOMM2023Conference(ACMSIGCOMM Withon-premisedeployments,financialexchangesguaranteefair-
+’23),September10,2023,NewYork,NY,USA.ACM,NewYork,NY,USA, ness for speed race trading by guaranteeing equal bi-directional
+14pages.https://doi.org/10.1145/3603269.3604871 latencytotherelevantmarketparticipants.Exchangesgotoagreat
+extenttoensurefairnessfortheirco-locatedMPcustomers;itis
+1 Introduction
+not uncommon, for example, to use layer-1 fan-out switches for
+MajorfinancialexchangessuchasNASDAQ,ChicagoMercantile market data stream replication and equal-length cables to all co-
+Exchange(CME),andLondonStockExchange(LSE)haverecently locatedMPs.Onthecontrary,publicclouddatacenternetworksdo
+expressedinterestinmigratingtheirworkloadstothecloud,aiming notprovidesuchguaranteesastheywereoriginallydesignedfora
+heterogeneous,multi-tenantenvironment,aimingtoaccommodate
+Permissiontomakedigitalorhardcopiesofallorpartofthisworkforpersonalor
+classroomuseisgrantedwithoutfeeprovidedthatcopiesarenotmadeordistributed diverse workloads. Even if the MPs are located within the same
+forprofitorcommercialadvantageandthatcopiesbearthisnoticeandthefullcitation cloud region as the CES, it is hard to guarantee that the latency
+onthefirstpage.Copyrightsforcomponentsofthisworkownedbyothersthanthe
+betweenCESandvariousMPswillbethesame.Copperandfiber
+author(s)mustbehonored.Abstractingwithcreditispermitted.Tocopyotherwise,or
+republish,topostonserversortoredistributetolists,requirespriorspecificpermission opticscablesarenotnecessarilyofequallength,networktrafficis
+and/orafee.Requestpermissionsfrompermissions@acm.org. notevenlybalancedamongthedifferentpaths,multiplevendors’net-
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA
+workelementshavedifferentperformancecharacteristics,network
+©2023Copyrightheldbytheowner/author(s).PublicationrightslicensedtotheAsso-
+ciationforComputingMachinery. over-subscriptionisstillcommon,andnetworkqualityofservice
+ACMISBN979-8-4007-0236-5/23/09...$15.00 mechanismsforconcurrentworkloadsareonlybesteffort.
+https://doi.org/10.1145/3603269.3604871
+550
+
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA E.Guptaetal.
+Thisproblemhasrecentlyreceivedsomeattentionfromtheaca-
+demic community. CloudEx [13] aims to achieve fairness by at-
+temptingtoprovideequal(yetinflated)bi-directionallatenciesin
+thecloudrelyingontightclocksynchronizationandbufferingfor
+market data delivery. As we explain later (§2), such approaches
+are fragile because latencies in datacenter networks are not only
+unpredictable,butalsounbounded.Otherproposals[11,19],require
+intrusivemodificationstoexistingCESimplementationstowork.
+Inthispaper,weseektoaddresstheproblemoffairnessforspeed
+racetradingincloudenvironments.Ourkeyinsightisthatequal
+bi-directionallatenciesarenotstrictlyrequiredtoachievefairness.
+For speed trading, instead of ex-ante equalizing latency, we can
+ex-postfactocorrectforanylatencydifferencesindeliveryofdata
+byorderingtradesdifferently.Weintroducelogicaldeliveryclocks
+that track time at each trader relative to when market data were
+received.WepresentDeliveryBasedOrdering(DBO),amechanism
+that uses delivery clocks to order trades and achieve guaranteed
+fairness1innetworktopologieswherelatencyisunpredictableand
+unbounded.Beyondguaranteedfairness,DBOhastwootheradvan-
+tages.First,DBOdoesnotrequireanyclock-synchronizationwhat-
+soever,whichisnotoriouslyhardtoachieveincloudenvironments
+where the network latency is unpredictable and unbounded [17].
+Second,comparedtoothersolutions,DBOachievessignificantly
+lowerend-to-endlatency.
+WeimplementarealDBOsystem,whichweevaluateonabare-
+metalservertestbedleveragingprogrammableNICs.Wealsoeval-
+uateDBOinapublicclouddeploymentusingstandardVMs:our
+system achieves guaranteed fairness and sub-100us p99 latency
+whileservicing125Ktradespersecond.
+2 Background
+We begin with discussing the challenges in hosting financial ex-
+changesonthecloud,thatarederivedfromourdiscussionswith
+threemajorfinancialexchanges(allareamongthetop10exchanges
+in the world by trading volume) and our review of papers from
+financialacademiccommunity[9,11,18,19]aswellasindustry
+papers[3,10].
+Whyismovingtothecloudsohard?ShortAnswer:Itishardto
+achievefairnessincloud.Akeycustomer/businessforanymajorfi-
+nancialexchangeisHighFrequencyTraders(HFTs).Atahighlevel,
+highfrequencytradersaimtoprocessincomingmarketdatafeed
+fromtheexchangeserverandplacetradeordersasfastaspossible.
+Thesetradersareengagedinwhatisknownasspeedraceswhere
+theyarecompetingforthesametradingopportunity,tryingtoget
+theirtradeordersaheadofcompetition.Thereisanarmsraceinhigh
+frequencytraderstorespondtomarketdatathefastest[11].HFTs
+arebecomingfasterwithtime,evenminordifferencesinlatency
+(sub-microsecondlevel)formarketdatadeliveryandtradeorders
+cangiveatradersignificantadvantage/disadvantageovertherest
+[9,10,18].Allowingsuchtraderstocompetefairlyiscriticalfor
+anyexchangetoattractHFTsthatbringsignificantliquiditytothe
+exchange.Ensuringsuchfairnessinclouddatacenternetworks,how-
+ever,isquitechallengingastheyexhibitnon-deterministicnetwork
+latencyduetoreasonsexplainedin§1.Exchangesnotonlywant
+fairness;tospeeduppricediscoverytheyalsowantlowlatency.The
+1DBOachievesLimitedHorizonResponseTimeFairness(seeDef.2).
+gniogtuO
+ataD
+tekraM
+gnimocnI
+edarT
+CES
+OB
+RB₁ RBᵢ RBₙ
+… …
+MP₁ MPᵢ MPₙ
+Figure1:BasiccomponentsofDBO.
+Unfairness
+CloudEx
+Inflated
+latency
+Network Latency
+Time
+ycnetal
+dne-ot-dnE
+Figure2:Clock-synchronizationisnotenough—Thisfigureshowsthe
+latencywithCloudEx.Evenwithperfectclock-synchronization,CloudEx
+incursbothunfairnessandinflatedlatency.
+latencyrequirementshighlydependontheexchange,rangingfrom
+sub-100microsecondtomillisecond [3].
+Howexchangesenablefairspeedracingtoday?ShortAnswer:
+Equalbi-directionallatency.Majorexchangesoperatetheirowndat-
+acenters.HFTtradersthatwanttoengageinspeedtradingcolocate2
+totheexchangedatacenter.
+Thecentralexchangeserver(CES)producesarealtimemarket
+datafeedanddistributesittoallthecolocatedparticipants(MPs).
+The exchange datacenter is optimized to ensure that participants
+getallthemarketdatapointsatthesametime.Further,exchanges
+ensurethatallthetradesplacedbytheparticipantsexperiencethe
+samelatencytotheexchangeserver.Theexchangeserversimply
+processesthetradesinafirst-come-first-serve(FCFS)manner.Op-
+timizingdatacenterstoprovidesuchequalbi-directionallatencyis
+expensive[3].Asaresultofhighcost,exchangeschargeasubstan-
+tialpremiumforsuchcolocation(NASDAQcharges$600,000per
+customerforcolocationanddirectdatafeed[3]).Theprohibitive
+colocationcostsestablishasignificantentrybarriertothedomainof
+high-frequencytrading.Majorexchangeswouldalsobeinterestedin
+settingupregionalexchangesbutthecostofcreatinganewregional
+datacenterisprohibitivelyhigh.
+2.1 RelatedWork
+Theproblemofmigratingfinancialexchangestothecloudhasre-
+ceivedsomeattention.Therearetwofundamentallydifferentap-
+proaches.
+2Exchangessupportcolocationforalimitednumberofparticipants.Theexactnumbers
+areconfidential,butthenumberisin10stolessthancoupleofhundreddependingon
+theexchange.
+551
+
+DBO:FairnessforCloud-HostedFinancialExchanges ACMSIGCOMM’23,September10,2023,NewYork,NY,USA
+Clock-synchronizationbasedsolutions:CloudEx[13]proposes Notation Definition
+usingclocksynchronizationtoachieveanequallatencyabstraction.
+𝐺(𝑥) RealTimeatwhich𝑥wasgeneratedattheCES.
+CloudExaddstwonewcomponentstothearchitecture(asshown
+𝐷(𝑖,𝑥) RealTimeatwhich𝑥 wasdelivered(by𝑅𝐵𝑖 incaseof
+oursystem)toMP𝑖.
+in Figure 1): (i) For each participant there is a colocated trusted
+𝑇𝑃(𝑖,𝑎) Marketdatapointusedtogenerate(𝑖,𝑎).
+component called the release buffer (RB), which buffers market 𝑅𝑇(𝑖,𝑎) Responsetimeof(𝑖,𝑎).
+datapoints,enablingadelayeddeliverytothemarketparticipant. 𝑆(𝑖,𝑎) RealTimeatwhich(𝑖,𝑎)wassubmittedbyMP𝑖.
+(ii)Likewise,theorderingbuffer(OB)attheCESbuffersthetrade 𝐹(𝑖,𝑎) RealTimeatwhich (𝑖,𝑎) isforwarded(byOBinour
+ordergeneratedbytheparticipants,enablingdelayedandre-ordered system)totheCES’smatchingengine(ME).
+deliveryofthetradeorderstotheCES.Clocksynchronizationex- 𝑂(𝑖,𝑎) Dictatestheorderinwhichtradesareforwarded(byOB
+cluded,thebroaderarchitectureofoursolutioncloselymirrorsthat inoursystem)totheCES.If𝑂(𝑖,𝑎) < 𝑂(𝑗,𝑏) then
+ofCloudEx.
+𝐹(𝑖,𝑎) <𝐹(𝑗,𝑏).
+InCloudEx,allthecomponentshavesynchronizedclocks.Amar- Table1:Notation.
+ketdatapointproducedattime𝑡 isreleasedbythereleasebuffers
+simultaneouslyatapre-specifiedtime𝑡+𝐶 1.Atradeordergenerated that responds to market data faster no longer has a competitive
+bytheparticipantattime𝑡 isforwardedtotheCESbytheordering advantage.Toachievefairnessinenvironmentswithunpredictable
+bufferattime𝑡+𝐶 2.Theproblemwiththissolutionisthatevenwith networklatency,Libra[19]assignsrandomprioritiestotheincoming
+perfectclocksynchronization,ifnetworklatencyspikesbeyondthe trades.Libraachievesfairnessforspeedracesstochastically(faster
+pre-specifiedthresholds,thensuchasystemincursunfairness(see participantstradesareorderedaheadmorethan50%ofthetimes)
+Figure2).Cloudnetworksexperiencelatencyspikesthatareacouple when the variability in network latency is bounded. Beyond the
+ofordersofmagnitudehigherthantheaverage[20].TuningCloudEx issuesstatedhere,themainproblemwithboththesesolutionsisthat
+thresholdstoachievefairnessishard:latencyspikes,althoughrare, theyrequireintrusivechangestotheexchangematchingalgorithm.
+arestillbothunpredictableandunbounded.Furthermore,byconser-
+3 ProblemStatement
+vativelysettingveryhighthresholdsforbetterfairness,thesystem
+wouldincurhighlatencyevenwhentheunderlyingnetworkiswell
+Goals:Inthispaper,weaimtoenablefaircompetitioninspeed
+behaved.Safeguardingagainsttailspikes,increasestheoverallend-
+racingamonghighfrequencytradersinnetworkenvironmentswhere
+to-endlatency(𝐶 1 +𝐶 2)notonlyatthetailbutonaverageaswell latencyis unpredictableandunbounded.Wealsodonot wishto
+(seeFigure2).Moreimportantly,themainissueremainsunsolved:
+modifythematchingenginetoachievethisgoal.Atahighlevel,
+still,thereisnoguaranteethatequalbidirectionallatencywillalways
+oursolutionexploitsthecharacteristicsofspeedracestosuggesta
+hold.Infact,thereisaknownimpossibilityresultonthis.
+newformoflogicaltimekeeping-deliveryclocks-thatmonitors
+Impossibilityresultforequalbi-directionallatency:Innetworken- timeaccordingtowhenmarketdataaredeliveredtotheparticipants.
+vironments with unpredictable and unbounded latency (common Byorderingtradesusingthisdeliverytimedomainwecanachieve
+networkmodelisdistributedsystems[15]),evenwithperfectlysyn- guaranteedfairnessforsuchspeedraces.Ourgoalhereisnotto
+chronizedclocks,itisimpossiblefortwomachinestocommunicate justproposeasolution,butalsopresenttheoreticalinsightsthathelp
+andco-ordinatetodoataskatthesametime(twogeneralsproblem researchersinunderstandingthisspaceandenablefuturework.
+[14]).Sotworeleasebufferscanneverco-ordinatetodeliverthe Non-goals:Achievingboundedlatencyincloudnetworksremains
+samedatatotherespectivemarketparticipantssimultaneously,no an open problem as of now. In this paper, we do not attempt to
+matterhowtheycommunicatewiththeCESorotherreleasebuffers. optimizetheunderlyingnetworklatencyorthetransportmechanism
+Notethatitisstillpossibletoco-ordinateattheOBtoensurethat formulticastingmarketdataorcommunicatingtradeorders.Wealso
+latencyonthereversepathstaysthesame(i.e.,twotradesgenerated donotdiscusssolutionsforreliabilityofthevariouscomponents.
+atthesametimeareforwardedtotheCESatthesametime). Exchangestodayincurunfairnessintheeventoffailures[10].In
+ImpossibilityResultonClockSynchronization:Further,innetwork oursystem,itshouldbepossibletodetectfailureofvariouscompo-
+environmentswithunboundednetworklatency,itisalsoimpossible nentsandmigratetheimpactedcomponents.Duringfailures,either
+tosynchronizeclockstoanyextentandtheerrorinclocksynchro- fairnessorlatencycangetaffected(§4.2.1).
+nizationisunbounded[17]. Wewillnowintroducesomenotation,formallydefineaspeed
+Ourconversationsrevealthatexchangeswishtoprovideguar- raceandfairnessforsuchraces.Thesedefinitionsarebasedonour
+anteedfairnessandasaresult,suchsolutionshaven’tseenmuch discussionswithfinancialexchangesandpapersfromacademia[9,
+adoption. 11,18,19]andindustry[3,10].
+Modifying how the matching engine behaves: Frequent Batch
+Notation:Werefertothe𝑥𝑡ℎ marketdatapointas𝑥.(𝑖,𝑎)refersto
+Auctions[11]proposesreleasingmarketdataperiodicallyinbatches.
+the𝑎𝑡ℎ
+tradefromMP𝑖.Table1liststhenotationsusedinthispaper.
+Thebatchfrequencyiskeptverylow(1batchper100ms)toallow Figure3showsthemajoreventsinaspeedrace.
+all participants to respond before the next batch is released. All Speedrace:Informally,aspeedrace[9,11,19]consistsoftrades
+thetradescorrespondingtoabatcharegiventhesamepriorityfor frommultipleparticipantscompetingforthesametradingopportu-
+executionattheCES.Thissolutionensuresfairnessinthesense nity.Aparticularmarketdatapointservesasthetrigger/stimulus
+thatnoparticipanthasanadvantageoverothersbecauseofnetwork fortradescompetinginthespeedrace.Participantsaimtoidentify
+latency.However,thesystemlatencyishigh(100ms!).Further,this thetradingopportunityandwinthespeedracebyrespondingasfast
+solution completely eliminates the speed races and a participant aspossibleafterreceivingthetriggermarketdatapoint.Thetrades
+552
+
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA E.Guptaetal.
+G(x) F(i, a) F( j, b) and(𝑗,𝑏)
+CES
+𝐶1:if𝑇𝑃(𝑖,𝑎)=𝑇𝑃(𝑗,𝑏)=𝑥
+RT(i, a)
+∧𝑅𝑇(𝑖,𝑎) <𝑅𝑇(𝑗,𝑏),
+MP
+i D(i, x) S(i, a) then,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏).
+MP
+RT( j, b)
+Theaboveconditionissimplystatingthatafasterparticipant’s
+j D( j, x) S( j, b) trades should be ordered ahead of slower participant. The above
+Figure3:Eventsinaspeedrace. conditionisfromtheperspectiveoftheparticipants.Responsetime
+isnotdirectlyvisibletothecloudproviderortheexchanges.We
+belongingtoaspeedracearethemostlatencysensitive[9,11,19]. willrewritetheaboveconditionsusingquantitiesvisibletothem.
+Differencesinlatencyacrossparticipantsindeliveringthetrigger Theaboveconditioncanberewrittenas,
+pointoronthereversepathtotheCEScancreatesignificantdisad-
+vantagesforcertainparticipants[9,18].Thesespeedtradesconsti- 𝐶1′ : if𝑇𝑃(𝑖,𝑎)=𝑇𝑃(𝑗,𝑏)=𝑥
+tuteasubstantialfractionoftheoveralltradesinmajorexchanges ∧𝑆(𝑖,𝑎)−𝐷(𝑖,𝑥) <𝑆(𝑗,𝑏)−𝐷(𝑗,𝑥),
+(atleast20%inLSE[9]).Inthispaper,wewilltrytoachievefair
+then,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏).
+orderingfortradesengagedinsuchspeedraces.
+Computemodelforspeedtrades:Theresponsetimefortrade(𝑖,𝑎), This condition states that the exchange can achieve response
+𝑅𝑇(𝑖,𝑎),whosetriggerpointis𝑥 (i.e.,𝑇𝑃(𝑖,𝑎) =𝑥),isdefinedas timefairnessbymeasuringtimeoftradesrelativetowhenamarket
+thetimeittooktogeneratethetradeafterreceivingthetriggerpoint participantreceivedthemarketdatatoordertrades.
+𝑥.Formally,thetimetrade(𝑖,𝑎)issubmitted/generatedbyanMPis Adding𝐺(𝑥),i.e.thegenerationtimeof𝑥,tobothsidesofthe
+givenby, equationresultsinthefollowingcondition:
+𝑆(𝑖,𝑎)=𝐷(𝑖,𝑥 =𝑇𝑃(𝑖,𝑎))+𝑅𝑇(𝑖,𝑎) (1) 𝐶1′′ : if𝑇𝑃(𝑖,𝑎)=𝑇𝑃(𝑗,𝑏)=𝑥
+∧𝑆(𝑖,𝑎)−(𝐷(𝑖,𝑥)−𝐺(𝑥)) <𝑆(𝑗,𝑏)−(𝐷(𝑗,𝑥)−𝐺(𝑥)),
+where 𝑆(𝑖,𝑎) is the timestamp at which trade (𝑖,𝑎) is submit- then,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏).
+ted/generatedbyanMP,and𝐷(𝑖,𝑥 =𝑇𝑃(𝑖,𝑎))isthetimeatwhich
+𝑅𝐵 𝑖 delivers𝑥 to𝑀𝑃 𝑖 (seeTable1).
+Here𝐷(𝑖,𝑥)−𝐺(𝑥)representstheonewaylatencyfromCESto
+participant𝑖fordatapoint𝑥.Sotoachieveresponsetimefairness
+Responsetimecapturesthespeedofaparticipant.Notethatsuch
+alltheexchangeneedstodoiscorrectforthedifferencesinlatency
+atrademightbegeneratedusingmarketdatapointsotherthanthe
+fromtheexchangetotheparticipant.
+trigger point. However, the trade submission time is completely
+To deal with variability in network latency, CloudEx tries to
+governedbythedeliverytimeofthetriggerpointandtheresponse
+equalizelatencybyholdinginformationatthereleasebufferand
+timeoftheparticipantforthattrade.
+releasingitsimultaneouslytoallparticipantsusingsynchronized
+Fairorderingoftradesinaspeedrace:Outcomeofaspeedrace clocks.Inotherwords,itstrivestoensurethat(𝐷(𝑖,𝑥)−𝐺(𝑥))is
+issimplygovernedbytheorderingofthecompetingtradesinthe equalto(𝐷(𝑗,𝑥)−𝐺(𝑥)),sothattradescansimplybeorderedby
+race.Ourgoalistoachievethesameorderingforthesetradeshad thetimewhentheyweresubmittedbytheparticipants(i.e.𝑆(𝑖,𝑎)).
+thenetworkprovidedequalbi-directionlatency.Werefertosuchan However,asdiscussedearlier,itisnotpossibletoequalizelatency
+orderingoftradesasResponseTimeFairness. alwayswhentheunderlyingnetworklatencyisunbounded.
+Inanequalbi-directionallatencynetwork(𝐶 1latencyfromCES Inthiswork,wetakeadifferentapproach.Insteadoftryingto
+toMPs,𝐶 2latencyfromMPstoCES),trade(𝑖,𝑎)willbereceived
+synchronizeclocksorequalizelatency(eitherofwhichcanneverbe
+bytheCESattime, doneaccurately[14,17]),weshowthatitispossibletopostfacto
+correctforlatencydifferenceandachieve(aslightlyweakerform
+𝐹(𝑖,𝑎)=𝐺(𝑥 =𝑇𝑃(𝑖,𝑎))+𝐶 1 +𝑅𝑇(𝑖,𝑎)+𝐶 2 (2) of)responsetimefairness.
+Bydefinition,Trade(𝑖,𝑎)isorderedaheadof(𝑗,𝑏),i.e.,𝑂(𝑖,𝑎) < Causality of trades from a participant: We add an additional
+𝑂(𝑗,𝑏)),if𝐹(𝑖,𝑎) <𝐹(𝑗,𝑏).Insuchanetwork,twotrades(𝑖,𝑎)and requirementfororderingoftrades.Thisconditionsimplystatesthat
+(𝑗,𝑏)belongingtothesamerace(i.e.thesametriggerpoint𝑥)will tradesfromaparticipantshouldrespectcausality,i.e,iftrade(𝑖,𝑎)
+beorderedasfollows, wasgeneratedbeforetrade (𝑖,𝑏) thenitshouldbeorderedahead.
+Formally,
+If𝐺(𝑥)+𝐶
+1
++𝑅𝑇(𝑖,𝑎)+𝐶
+2
+<𝐺(𝑥)+𝐶
+1
++𝑅𝑇(𝑗,𝑏)+𝐶
+2
+,
+If𝑆(𝑖,𝑎) <𝑆(𝑖,𝑏), then,𝑂(𝑖,𝑎) <𝑂(𝑖,𝑏). (4)
+then,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏) (3)
+Fairness beyond Response Time Fairness: While speed races
+Usingtheaboveequation,wedefineresponsetimefairnessas arethemostlatencycritical,intheorytherecanbelatency-critical
+follows, tradesthatdon’tfallunderthespeedracemodel(e.g.,tradeswhose
+submissiontimedependondeliverytimeofmultipledatapointsor
+DEFINITION 1. Asystemachievesresponsetimefairnessifit someotherexternaldata).Guaranteeingperfectfairnessforsuch
+satisfiesthefollowingconditionforallcompetingspeedtrades(𝑖,𝑎)
+tradesmightrequiresimultaneousdeliveryofbothmarketdataand
+553
+
+DBO:FairnessforCloud-HostedFinancialExchanges ACMSIGCOMM’23,September10,2023,NewYork,NY,USA
+externaldata.Whilethisisimpossible,wewilldiscusshowDBO LEMMA 2. When trigger points are unknown, the necessary
+canbeenhancedtoprovidebetterfairnessforsuchtrades(§4.2.6). conditionsonthedeliveryprocessesforachievingresponsetime
+Assumptions:Wewilllistoutsomeoftheassumptionswemakein fairnessisgivenby,
+oursolution. 𝐷(𝑖,𝑦)−𝐷(𝑖,𝑥)=𝐷(𝑗,𝑦)−𝐷(𝑗,𝑥), ∀𝑖,𝑗,𝑥,𝑦.
+Trust:Releaseandorderingbuffersaretrustedcomponentsthatare
+PleaseseeAppendixAforproofofLemma2.
+controlledbythecloudproviderandthatcannotbetamperedwith.
+Thelemmastatesthattoachieveresponsetimefairness,theinter-
+Proximity:Releasebuffersarecolocatedwiththeparticipants.The deliverytimesbetweendatapointsshouldbethesameacrossall
+latencybetweenthemisnegligible.Inoursystem,weimplement participants.However,achievingthesameinter-deliverytimewhen
+thereleasebufferatparticipant’sNIC.Forscenarioswhererelease networklatencyisunboundedisalsoimpossible.Iftwoprocesses
+buffercannotbecolocatedweanalyzetheimpactoflatencybetween canco-ordinatetoachievethesameinter-deliverytime,thenthey
+thereleasebufferandtheparticipant(§4.2.3). canco-ordinatetodoataskatthesametime,acontradictionofthe
+Clock-driftrate:Wedon’tmakeanyassumptionsonclocksbeing twogeneralsimpossibilityresult.
+□
+synchronizedacrosscomponentsinthenetwork.Similartoliterature
+inthetraditionaldistributedsystems[17],weassumethatclock- We cannot achieve Response Time Fairness in settings where
+driftrateisnegligibleandreleasebufferscanmeasuretime-intervals triggerpointsareunknown.Wedefineanewslightlyweakerversion
+accurately.Clockdriftsratesaresmallinpractice(<0.02%undera calledLimitedHorizonResponseTimeFairness(LRTF)thatis
+widerangeofscenarios[16]). stilluseful.Formally,LRTFisdefinedas,
+In-orderdelivery:Weassumethatpacketscanbelostinthenet-
+DEFINITION2. Asystemachieveslimited-horizonresponsetime
+work. Packets that are not dropped are delivered in order. Just
+fairnessifitsatisfiesthefollowingconditionforallcompetingspeed
+likeexchangestoday,weassumethatalllosesarehandledout-of- trades(𝑖,𝑎)and(𝑗,𝑏)
+bandwherethereceiverrequestsretransmissionusinganalternative
+slower path [10]. Similar to modus operandi, our system incurs 𝐶2:if𝑇𝑃(𝑖,𝑎)=𝑇𝑃(𝑗,𝑏)=𝑥
+unfairnessinsuchcases. ∧𝑅𝑇(𝑖,𝑎) <𝑅𝑇(𝑗,𝑏),
+Participantsarelocatedinthecloud:Weassumethatallthepartici- ∧𝑅𝑇(𝑖,𝑎) <𝛿,
+pantsarelocatedinthecloud.Incaseacertainparticipantdoesn’t
+then,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏).
+wanttomovetothecloud,theexchangecanrunaproxymachinein
+thecloudonthebehalfofsuchaparticipant.Externalparticipants Theaboveconditionissimilartocondition(C1)withanadditional
+cangetmarketdatafeedandplacetradesthroughthisproxy.Because constraintthatthesystemguaranteesresponsetimefairnessforonly
+ofadditionallatencyfromproxytotheparticipantmachines,trades fast trades that are generated within a bounded amount of time.
+fromsuchexternalparticipantswillbeatadisadvantage.Fairness Noticethattheconstraintonresponsetimebeinglessthan𝛿isonly
+forotherparticipantsinthecloudremainsunaffected. onparticipant𝑖.Participant𝑖’stradeswillbeorderedfairlyregardless
+Remark:CloudExalsomakesthesameassumptionsontrust,prox- ofwhethertheresponsetimeofotherparticipants’competingtrades
+imity, and participants being in the cloud. The key difference is iswithin𝛿ornot.Inthispaper,wewillpresentasystem,DBO,that
+thatCloudExfurtherassumesclocksynchronizationandrequires foranygiven𝛿achievesLRTFinaguaranteedmanner.
+boundedlatencyforguaranteeingfairness. WhyisLRTFuseful?LRTFisbasedonthefactthattypicallypartici-
+3.1 Challenges pantsrespondveryquicklytomarketdata.Fromourconversations,
+thefasterparticipantsinmajorexchangesrespondswithinafewmi-
+Therearethreekeychallenges.
+croseconds.Studies[9]furthershowthatthemajorityofthespeed
+Challenge1:Clock-synchronization.Ideally,wewantasolution
+raceslast5-10microseconds.Anexchangeprovidercanchooseto
+thatdoesn’trequireanyclocksynchronization.
+offeritsparticipantsguaranteedresponsetimefairnessforfasttrades.
+Challenge2:Triggerpointisunknown.Weassumethattheex- Thechoiceof𝛿presentsatrade-off;increasing𝛿increasessystem
+changecannottrustanMPtoaccuratelyprovidethetriggerpoint latency.
+andthatthetriggerpointofaspeedtradeisnotknown.Insuchcase
+Challenge3:Enforcingtheordering.Supposewecouldtageach
+itishardtomeasuretheresponsetimeandconsequentlydecidehow
+trade(𝑖,𝑎)withtheordering(𝑂(𝑖,𝑎))inwhichwewantthetrades
+tradesshouldbeordered.Unfortunately,whenresponsetimesare
+tobeforwardedtotheCESforachievingfairness.Becausetrades
+unboundeditisimpossibletoachieveResponseTimeFairness.
+cantakeunboundedamountoftimeonthereversepath,eveninthis
+THEOREM1. Iftriggerpointsfortradesareunknown,thenno scenarioitshardtoenforcesuchanorderingattheorderingbuffer.
+systemcanachieveResponseTimeFairness. Inparticular,beforeforwardingtrade(𝑖,𝑎)weneedtobesurethat
+thereisnoothertrade(𝑗,𝑏)inflightthatshouldbeorderedahead.
+PROOF. Whentriggerpointsareunknown,theorderingenforced
+4 Design
+bythesystemshouldachieveresponsetimefairnessfortradesre-
+gardlesswhatmighthavebeentheirtriggerpoint.Thismeansthat Inthissection,wewillfirstpresentthecoreofoursystem.Then
+theorderingenforcedbythesystemshouldrespectcondition𝐶1′ wepresentsomeanalysisofthesystemalongwithsomeextensions
+regardlessofwhatthetriggerpoint𝑥 is.Thenecessaryconditionfor toaddressafewpracticalconcerns.Wewillpresentdetailsofour
+thistoholdtrueisgivenbelow. cloudimplementationseparatelyinthenextsection.
+554
+
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA E.Guptaetal.
+x x + 1 S( j, b) < S(i, a)
+CES G(x) G(x + 1) RT(i, a) < RT( j, b)
+CES
+D(i, x) t D(i, x + 1)
+MP i RT(i, a)
+RB
+DC i D(i, x) S(i, a) D(i, x + 1)
+i
+〈x, 0〉 〈x, t – D(i, x)〉 〈x + 1, 0〉 RT( j, b)
+RB
+Figure4:DeliveryClock. j D( j, x) S( j, b) D( j, x + 1)
+4.1 DeliveryBasedOrdering Figure5:DBOcanhelpcorrectforlatedeliveryofdata.Deliveryof
+Oursolutioniscomposedofthreeparts.
+marketdatatoMP𝑖islaggingbehindMP𝑗.Therearetwotrades(𝑖,𝑎)
+and(𝑗,𝑏)generatedinresponsetothesamemarketdata𝑥.(𝑗,𝑏)was
+4.1.1 DeliveryClock submittedbefore(𝑖,𝑎)butresponsetimeof(𝑖,𝑎)islessthan(𝑗,𝑏).In
+Whatwedo.EachRBmaintainsaDeliveryClock.Thisdelivery thisexample,𝐷𝐶(𝑖,𝑎)(= ⟨𝑥,𝑅𝑇(𝑖,𝑎)⟩) < 𝐷𝐶(𝑗,𝑏)(= ⟨𝑥,𝑅𝑇(𝑗,𝑏)⟩)
+clockessentiallytrackstimerelativetowhenmarketdatawasdeliv- andtrade(𝑖,𝑎)iscorrectlyorderedaheadof(𝑗,𝑏).
+eredtotheparticipant.Weuse𝐷𝐶(𝑖,𝑎)torepresentdeliveryclock
+ofparticipant𝑖 attimewhenatrade (𝑖,𝑎) issubmitted.Delivery pacingdataattheRBitisindeedpossibletoensurethattheabove
+clockisalexicographicaltuple. condition is always met. The main reason why we can meet the
+𝐷𝐶(𝑖,𝑎)=⟨𝑙𝑑(𝑖,𝑎),𝑆(𝑖,𝑎)−𝐷(𝑖,𝑙𝑑(𝑖,𝑎))⟩. (5) aboveconditionisthatconditionC2limitsthatthetriggerpoint𝑥
+cannotbeanyarbitrarydatapointinthepast,andthatthetrigger
+where𝑙𝑑(𝑖,𝑎)isthelatestdatapointthatwasdeliveredtoMP𝑖 by pointmusthavebeendeliveredrecently𝑆(𝑖,𝑎)−𝐷(𝑖,𝑥) <𝛿.Inthe
+time𝑆(𝑖,𝑎),i.e.,𝐷(𝑖,𝑙𝑑(𝑖,𝑎)) ≤𝑆(𝑖,𝑎) <𝐷(𝑖,𝑙𝑑(𝑖,𝑎)+1)).Interval,
+nextsubsection,wewillshowhowwecanachievethisandsolve
+𝑆(𝑖,𝑎)−𝐷(𝑖,𝑙𝑑(𝑖,𝑎)),correspondstothetimethathaselapsedsince
+challenge2.
+the last delivery and can be measured locally at the RB without
+Remark:Inourcloudexperiments,wefindthatusingdeliveryclocks
+requiringanyclocksynchronization(Challenge1).Figure4shows
+aloneforordering(i.e.,withoutanyadditionalcontroloverdelivery
+howdeliveryclockadvanceswithtime.3
+timesattheRB)achievesfairnesswithveryhighprobability.This
+Monotonicity:Deliveryclocksadvancemonotonicallywithmarket
+is because network latency (from CES to any given participant)
+datadeliveryandrealtime.Asaresult,DBOtriviallysatisfiesthe
+exhibitshightemporalcorrelationinlatencyespeciallyovershort
+causalitycondition(Equation4).Further,itincentivizesthepartici-
+periodsoftime.Whentemporalcorrelationishigh,inter-delivery
+pantstosubmittradesasearlyaspossible.Therefore,aparticipant
+timeatanyparticipantisclosetotheinter-generationtimeatthe
+cannot gain any advantage by delaying trades. Finally, we also
+CES.Insuchcases,conditiongivenbyEquation7issatisfiedwith
+leveragethemonotonicpropertytoovercomechallenge3(§4.1.3).
+highprobability.
+Allincomingtradesaremarkedwiththedeliveryclockatthe
+Differencewithtraditionallogicalclocks:Logicalclocksarecom-
+tradesubmissiontime.Theorderingbufferusesthisdeliveryclock
+monlyusedindistributedsystems.ThemostfamousonesareLam-
+timetoordertrades.Formally,theorderinginDBOisgivenby,
+portclocks[15]andvectorclocks.Theseclockscanbeusedfor
+𝑂(𝑖,𝑎)=𝐷𝐶(𝑖,𝑎). (6) achievingcausalorderingofevents.Whiletheseclockscantrack
+causalityofevents,theycannotbeusedtoachieveresponsetime
+Whyitworks.Whenthetriggerpointoftrade(𝑖,𝑎)isindeedthe
+fairness.Inparticular,theseclocksdon’tsayanythingabouthowtwo
+lastdatapoint(i.e.,𝑥 = 𝑇𝑃(𝑖,𝑎) = 𝑙𝑑(𝑖,𝑎)),then,DBOrespects
+competingtradesgeneratedusingthesamemarketdatashouldbe
+conditionC2forLRTF.Figure5showsanillustrativeexampleof
+orderedasthesetwotradeshavenodirectcausalityrelation.Unlike
+this.Thisisbecause,thedeliveryclockdirectlytrackstheresponse
+deliveryclocks,suchlogicalclocksalsohavenonotionofmeasuring
+time of (𝑖,𝑎) in this case and𝑂(𝑖,𝑎) = 𝐷𝐶(𝑖,𝑎) = ⟨𝑥,𝑅𝑇(𝑖,𝑎)⟩.
+timebetweenoccurrencesoftwoevents.Measuringtimeinterval
+Foracompetingtrade(𝑗,𝑏)withhigherresponsetime,thedelivery
+betweeneventsiscriticaltoachievefairnesssforexchanges.
+clockattimeofsubmissionwilleitherread𝑂(𝑗,𝑏) = 𝐷𝐶(𝑗,𝑏) =
+⟨𝑥,𝑅𝑇(𝑗,𝑏)⟩ (if𝑆(𝑗,𝑏) < 𝐷(𝑗,𝑥 +1)) or𝐷𝐶(𝑗,𝑏) = ⟨𝑦,𝑆(𝑗,𝑏) − 4.1.2 BatchingandPacing
+𝐷(𝑗,𝑦)⟩with𝑦 >𝑥.Inbothcases,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏). Whatwedo.InDBO,theCESsplitsdataintobatches.Eachnew
+At a high level, in our ordering we are correcting for latency batchcontainsalldatapointsintheduration (1+𝜅)·𝛿 afterthe
+differencesindatadeliverybyusingthedeliverytimeofthelastdata
+previousbatch(𝜅 >0).Eachreleasebufferdeliversalldatapoints
+point.Whenthelastdatapointisnotthetriggerpointfortrade(𝑖,𝑎), inabatchatthesametime.Thereleasebufferdeliversbatchesas
+DBOsatisfiestheLRTFconditionC2,ifthefollowingcondition quicklyaspossiblewhileensuringthatthetimebetweendeliveryof
+holds,
+twoconsecutivebatchesisatleast𝛿.Figure6showsanillustration
+𝐷(𝑖,𝑙𝑑(𝑖,𝑎))−𝐷(𝑖,𝑥)=𝐷(𝑗,𝑙𝑑(𝑖,𝑎))−𝐷(𝑗,𝑥), (7) ofbatching.Bothbatchingandpacingdelaythedeliverytimeofdata
+points.Inthenextsubsectionwewillanalyzetheimpactofthetwo
+where 𝑥 = 𝑇𝑃(𝑖,𝑎). While it is impossible to ensure that inter- onlatency.NotethatintheeventofqueuebuildupattheRB,since
+deliverytimesremainthesameforallparticipantsforallpoints,by thebatchgenerationrate( 1 )isslowerthanthebatchdequeue
+(1+𝜅)·𝛿
+3For simplicity of notation, we only defined delivery clock at the time of trade rate(1),thequeueattheRBeventuallygetsdrained(§4.2.1).
+𝛿
+submission. More generally, delivery clock for MP𝑖 at any time 𝑡 is given by Why it works. With batching and pacing, DBO achieves LRTF.
+⟨𝑙𝑑(𝑖,𝑡),𝑡−𝐷(𝑖,𝑙𝑑(𝑖,𝑡))⟩,where𝑙𝑑(𝑖,𝑡)isthelatestdatapointdeliveredbefore
+time𝑡. In particular, consider a trade (𝑖,𝑎) with response time less than
+555
+
+DBO:FairnessforCloud-HostedFinancialExchanges ACMSIGCOMM’23,September10,2023,NewYork,NY,USA
+(1+ )·δ (1+ )·δ (1+ )·δ trades (𝑗,𝑏) withlowerresponsetimes(𝑅𝑇(𝑗,𝑏) < 𝑅𝑇(𝑖,𝑎)).Let
+𝑅(𝑖,𝑥,𝑅𝑇)representthetimewhentheCESwillreceiveapotential
+CES 𝜅 𝜅 𝜅
+trade (𝑖,𝑎) whosetriggerpointis𝑥 andresponsetimeis𝑅𝑇.For-
+RB mally,theearliesttimethattrade(𝑖,𝑎)canbeforwarded,𝐹 𝑚𝑖𝑛(𝑖,𝑎),
+i
+isgivenby,
+MP
+i 𝐹 𝑚𝑖𝑛(𝑖,𝑎)=max(𝑅(𝑗,𝑥 =𝑇𝑃(𝑖,𝑎),𝑅𝑇 =𝑅𝑇(𝑖,𝑎))). (9)
+≥ δ ≥ δ 𝑗
+Figure 6: Batching and Pacing. Inter-delivery time for consecutive A subtle point to note here is that even if participant 𝑗 does not
+batchesisequaltoormorethan𝛿.
+produce any trades, we still need to wait for that participant till
+𝛿. Because of pacing, consecutive batches are separated at least 𝑅(𝑗,𝑥 = 𝑇𝑃(𝑖,𝑎),𝑅𝑇(𝑖,𝑎)). Before this time, fundamentally the
+by 𝛿. This means that the trigger point (𝑥 = 𝑇𝑃(𝑖,𝑎)) must be CEScannotbesurethatitwillnotreceiveacompetingtradefrom
+within the last received batch. The point 𝑙𝑑(𝑖,𝑎) is also the last participant𝑗 withalowerresponsetime.
+pointinthisbatchand𝐷(𝑖,𝑙𝑑(𝑖,𝑎)) = 𝐷(𝑖,𝑥).Withbatchingand Weuse𝑅𝑇𝑇(𝑖,𝑥,𝑅𝑇)torepresentthesumofrawnetworklatency
+pacing,thedeliveryclockagaindirectlytrackstheresponsetime forpoint𝑥 fromCEStoMP𝑖 andlatencyoftradefromMP𝑖 tothe
+of (𝑖,𝑎) and𝑂(𝑖,𝑎) = 𝐷𝐶(𝑖,𝑎) = ⟨𝑙𝑑(𝑖,𝑎),𝑅𝑇(𝑖,𝑎)⟩. With batch- CES(whosetriggerpointis𝑥 andresponsetime𝑅𝑇).Inthebest
+ing,forparticipant 𝑗,𝑥 and𝑙𝑑(𝑖,𝑎) alsobelongtothesamebatch casescenarioforlatency(nobufferingatanypointinthepath),the
+𝐷(𝑗,𝑙𝑑(𝑖,𝑎)) = 𝐷(𝑗,𝑥). For a competing trade (𝑗,𝑏) with higher minimumvaluefor𝑅canbegivenby,
+response time, the delivery clock at the time of submission will 𝑅 𝑚𝑖𝑛(𝑖,𝑥,𝑅𝑇)=𝐺(𝑥)+𝑅𝑇𝑇(𝑖,𝑥,𝑅𝑇)+𝑅𝑇. (10)
+eitherread𝑂(𝑗,𝑏) =𝐷𝐶(𝑗,𝑏)) = ⟨𝑙𝑑(𝑖,𝑎)),𝑅𝑇(𝑗,𝑏)⟩(if(𝑗,𝑏)was
+Using the above three equations, we can write the following
+submittedbeforethenextbatch,i.e.,𝑆(𝑗,𝑏) <𝐷(𝑗,𝑙𝑑(𝑖,𝑎)+1))or
+theorem.
+𝐷𝐶(𝑗,𝑏) = ⟨𝑦,𝑆(𝑗,𝑏) −𝐷(𝑗,𝑦)⟩ with𝑦 > 𝑙𝑑(𝑖,𝑎). In both cases,
+𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏). THEOREM3. Foranysystemthatachievesresponsetimefairness,
+4.1.3 Enforcingtheordering
+theminimumlatencyfortrade(𝑖,𝑎),𝐿 𝑚𝑖𝑛(𝑖,𝑎),isgivenby,
+OBcontainsapriorityqueuewhereallincomingtradesaresorted 𝐿 𝑚𝑖𝑛(𝑖,𝑎)=max(𝑅𝑇𝑇(𝑗,𝑥 =𝑇𝑃(𝑖,𝑎),𝑅𝑇 =𝑅𝑇(𝑖,𝑎))). (11)
+𝑗
+basedonthedeliveryclocktimestamp(Equation6).Atrade(𝑖,𝑎)
+Putitsimply,theabovetheoremstatesforachievingresponsetime
+attheheadofthepriorityqueueshouldbeforwardedtotheCES
+fairness,theminimumlatencyisboundedbythemaximumround
+onlywhentheOBhasreceivedalltrades(𝑗,𝑏)withlowerordering
+triptimeacrossallparticipants.Thismeansthatfundamentallybad
+𝐷𝐶(𝑗,𝑏) <𝐷𝐶(𝑖,𝑎).
+latencyforaparticipantaffectsthelatencyofalltrades.Toachieve
+OB’sHeartbeatHandler:InDBO,eachRBsendsaheartbeatpe-
+lowlatencyconsistently,wewouldliketoensurethatlatencyofall
+riodicallyevery𝜏 secondstotheCES.Theheartbeat (𝑖,ℎ),from
+theparticipantsiswellbehavedmajorityofthetimes.Howtobetter
+participant𝑖 containsthedeliveryclocktimestampatthetimethe
+achievethisgoalisleftasasubjectforfuturework.
+heartbeatwasgenerated(𝐷𝐶(𝑖,ℎ)).Sincedataisdeliveredinorder
+HowdoesDBOcomparewiththelatencybound?DBOachieves
+andbecausedeliveryclockadvancesmonotonicallywithtime,heart-
+closetooptimallatency.Comparedtothelatencybound,batching
+beat(𝑖,ℎ)tellstheOBthatithasreceivedalltradesfromparticipant𝑖
+andpacingintroduceadditionaldelayindeliveryofmarketdata
+withdeliveryclocklessthan𝐷𝐶(𝑖,ℎ).Theorderingbufferforwards
+points.Sinceheartbeatsaregeneratedonlyperiodicallytheycan
+trade(𝑖,𝑎)ifithasreceivedheartbeatsfromalltheparticipantswith
+introduceanadditionaldelayof𝜏 attheorderingbuffer.Wenow
+deliveryclocktimestamphigherthan𝐷𝐶(𝑖,𝑎).
+discussthedelayduetoeachofthesecomponentsandhowdothe
+Note:Severalmajorfinancialexchangesalreadyrelyonheartbeats[2]
+parameters𝜅,𝛿and𝜏 affectlatency.
+forlivenesswhentrafficislow.
+Impactofbatching:Batchingcanintroduceanadditionaldelayof
+4.2 UnderstandingDBO
+(1+𝜅)·𝛿intheworstcase.
+4.2.1 Latency,parametersettingandstragglermitigation Setting𝛿:𝛿 thuspresentsatrade-offbetweenlatencyandfairness
+Wewillfirstderivetheminimumlatencyrequiredbyanysystem (how large of a horizon can we pick). The right trade-off really
+thatachievesresponsetimefairness.WewillthendiscusshowDBO dependsontheneedsoftheexchange.Ideally,theexchangeshould
+comparestothislatencybound.Wewillalsopresentguidelinesfor picktheminimumvalueof𝛿thataccommodatestheresponsetime
+settingparametersandhowtomitigatestragglersthatcanimpact ofthefastestparticipantsinarace.Ourconversationsrevealthat
+latency. fastestparticipantstypicallyrespondwithinafewmicrosecondsand
+Wedefinelatencyfortrade(𝑖,𝑎),𝐿(𝑖,𝑎),asthesumoflatencyin majorityofthespeedraceslast5-10𝜇𝑠.Forourcloudexperiments
+deliveringdata(fromgenerationtime)andlatencyintradeforward- weuse𝛿 =20𝜇𝑠.
+ingtotheCES(fromtradesubmissiontime).Formally,
+Impactofpacing. Pacingrestrictsthebatchdequeuerateatthe
+𝐿(𝑖,𝑎)=(𝐷(𝑖,𝑥)−𝐺(𝑥))+(𝐹(𝑖,𝑎)−𝑆(𝑖,𝑎)), RB.Whennetworklatencytoaparticipantisnotvarying,thebatch
+arrival/enqueue rate at the RB ( 1 ) is lower than the batch
+𝐿(𝑖,𝑎)=𝐹(𝑖,𝑎)−𝐺(𝑥)−𝑅𝑇(𝑖,𝑎), (8) (1+𝜅)·𝛿
+dequeue rate limit (1) and there is no queue build up. However,
+where𝑥 =𝑇𝑃(𝑖,𝑎).
+whennetworklatenc
+𝛿
+ytoaparticipantisdecreasing(e.g.,aftera
+LatencyBound:Formally,trade(𝑖,𝑎)canonlybeforwardedtothe latencyspike),batcharrivalrateattheRBcanexceedthedequeue
+CES’sMEonlywhentheCEShasreceivedallpotentialcompeting ratelimitleadingtoaqueuebuildup.Theoverallqueue-dequeue
+556
+
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA E.Guptaetal.
+Generation Time, G(x)
+tnapicitrap
+ot
+ycnetaL
+)x(G-)x,i(D
+ofcrashes,OBmightnothearanyheartbeats.IftheOBdoesnot
+Direct Delivery
+Batching + Pacing hearaheartbeatfromaparticularparticipantfortheabovethreshold,
+thenitconcludesthatroundtriplatencyexceedsthethresholdand
+theOBdeemstheparticipantastraggler.
+OBfailure:Intheevent,theOBcrashesalltradesinthepriority
+queuewillbelost.Systemwillincurunfairnessinsuchcases.
+4.2.2 Thenecessityofbatchingandpacing
+Batchingandpacingcontributedelays;aretheynecessary?The
+Figure7:Latencyindatadelivery:x-axisshowsthegenerationtimeof answerisyes.SimilartoLemma2,wecanderivethenecessary
+themarketdata.y-axisshowsthelatencyfromgenerationtimetodata conditionsforachievingLRTF.
+delivery.𝜅governstheaverageslopeoftheorangelineimmediatelyafter
+latencyspike(slope=
+1+
+𝜅 𝜅). COROLLARY1. Whentriggerpointsareunknown,thenecessary
+conditionsonthedeliveryprocessesforachievinglimitedhorizon
+ratecanbegivenbybatchsize·batchratelimit = 1+𝜅.Figure7
+responsetimefairnessisgivenby,
+showstheimpactofbatchingandpacingonlatencyindeliveryof
+If𝐷(𝑖,𝑦)−𝐷(𝑖,𝑥) <𝛿, then,
+data in the event of a queue build up. The figure also shows the
+latencywhendataisdelivereddirectly(rawnetworklatency).The 𝐷(𝑖,𝑦)−𝐷(𝑖,𝑥)=𝐷(𝑗,𝑦)−𝐷(𝑗,𝑥), ∀𝑖,𝑗.
+smallersawtoothsinthebatching+pacingarebecauseofbatching.
+PROOF. PleaseseeAppendixB. □
+Thedeviationindirectdeliveryandbatching+pacing(afterthe
+latencyspike)isbecauseoftheratelimitimposedbypacing. IncontrasttoLemma2,theaboveconditionstatesthattheinter-
+deliverytimeoftwopointsshouldbesameacrossallparticipants
+Setting𝜅:Increasing𝜅increasesbatchingdelaybutalsoincreases
+onlyiftheyareseparatedbylessthan𝛿forsomeparticipant.Batch-
+thequeuedrainrateintheeventofqueuebuildupduetotaillatency
+ingandpacingindeedsatisfiesthis,fortwopoints𝑥and𝑦inabatch,
+spikes.Increasing𝜅thuspresentsatrade-offbetweenreducingtail
+theinter-deliverytimesacrossallparticipantsisindeedzeroand
+latencyandincreasingaveragelatency.Inourexperimentsweuse
+henceequal.Forpoint𝑥 and𝑦belongingtodifferentbatches,since
+𝜅 =0.25.
+theinter-deliverytimeisgreaterthan𝛿acrossallparticipants,there
+Impactofheartbeats:Heartbeatspresentatrade-offaswell.Too isnoadditionalconstraintoninter-deliverytimesbeingequal.
+frequentheartbeatscanoverwhelmthenetwork,theorderingbuffer
+4.2.3 ImpactofRBtoMPlatency
+orthereleasebuffer.InfrequentheartbeatscanincreasethetimeOB
+InscenarioswhereRBandtheparticipantcannotbecolocated,DBO
+hastowaitfortheparticipants.Inparticular,heartbeatscanintroduce
+canincurunfairness.Ifthislatencyisunbounded,then,itmightbe
+anadditionalwaittimeof𝜏.Notethatthenumberofheartbeats,the
+impossibletoachievefairness.Iflatencyisbounded,however,then
+OBneedstoprocessincreaseslinearlywiththenumberofpartici-
+DBOprovidesthefollowingfairnessguarantees.
+pants.Inthenextsectionweshowhowtheheartbeathandlercanbe
+shardedforscalability. THEOREM4. Ifroundtripnetworklatencyfromreleasebuffer
+Setting𝜏: Ideally we want to pick as low of a value as possible 𝑖 toit’scorrespondingparticipantisboundedbetween𝐵 𝑙(𝑖) and
+fortheheartbeatswithoutoverwhelmingthesystem.Thisnumber
+𝐵 ℎ(𝑖), then, DBO achieves the following guarantee for ordering
+trades.
+isverymuchdependentonthecapabilitiesofthenetworkandthe
+processingpoweroftheRBandtheOB.Inourcloudimplementation
+𝐶3:if𝑇𝑃(𝑖,𝑎)=𝑇𝑃(𝑗,𝑏)=𝑥
+weuse𝜏 =20𝜇𝑠. ∧𝑅𝑇(𝑖,𝑎) <𝑅𝑇(𝑗,𝑏)−(𝐵 ℎ(𝑖)−𝐵 𝑙(𝑗)),
+Anoteonlatency:Whenthenetworklatencytoparticipantsisnot ∧𝑅𝑇(𝑖,𝑎) <𝛿−𝐵 ℎ(𝑖),
+varyingwithtime,thereisnoqueuebuildupatthereleasebuffers. then,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏).
+Insuchcases,DBOaddsmaximumof((1+𝜅)·𝛿)+𝜏 additional
+PROOF. SeeAppendixC. □
+latencyoverthelatencybound.
+StragglerMitigationandRB/MPfailureIntheeventaparticipant ComparedtoLRTF,theaboveconditionreducestheboundon
+orreleasebuffercrashes,DBOcanstallprocessingtrades.Further,
+responsetimeforthefastertrade(𝑖,𝑎)to𝛿−𝐵 ℎ(𝑖).Additionally,the
+theoverallsystemlatencyalsogetsimpactedwhenacertainpartici- aboveconditionstatesthattradesareorderedfairlyonlywhenthe
+pantisexperiencingunusuallyhighnetworklatency(seeTheorem3). responsetimeofthefastertradeislowerthantheresponsetimeofthe
+Herewehavetheoptiontowaitforthedelayedparticipantandtake
+competingtradebyatleastthevariabilityinlatency(𝐵 ℎ(𝑖)−𝐵 𝑙(𝑗)).
+alatencyhitbutnotletthefairnessbeimpacted.Ideally,wewant This theorem essentially states that when RB and MP cannot be
+toletthesystemcontinuewithlowlatencywithonlytheaffected colocated,forbetterfairnessweshouldensurethatlatencybetween
+participantincurringunfairness.InDBO,weuseasimplestrategy themisbothconsistent(acrossparticipants)andtheupperboundis
+tomitigatethis.Usingtheheartbeatsandthegenerationtimeofdata small.
+points,theOBtrackstheroundtriplatencytoeachparticipant.If 4.2.4 ImpactofLosses
+thislatencygoesbeyondacertainthresholdforaparticipant,then Althoughinfrequent,packetlossescanoccurincloudenvironments.
+theOBdoesnotwaitforheartbeatsfromsuchstragglerparticipant SuchlossescanimpactfairnessinDBO.However,onlythefairness
+beforeforwardingtrades.Whentheroundtriplatencygoesdown, fortradesthatarelostandpotentialtradeswhosetriggerpointislost
+OBagainstartswaitingforheartbeatsfromthestraggler.Intheevent areimpacted(seeAppendixD).
+557
+
+DBO:FairnessforCloud-HostedFinancialExchanges ACMSIGCOMM’23,September10,2023,NewYork,NY,USA
+4.2.5 Thwartingfront-runningattacks Set (on delivery):
+Thereisafront-runningattackpossibleinoursystem.Inparticular, RX Network Jitter i t d latest = pk t = .m c a lo r c ke k( t ) _id Paced data
+ifaparticipantreceivesamarketdatapoint𝑥 throughsomeother latest_delivery
+way before RB delivers the data point𝑥 to the participant, then
+theparticipanthasacompetitiveadvantage.Thisscenario(though
+unlikely)isstillpossible.
+Asimplewaytoavoidthisistolimitthataparticipantcannottalk
+toanyonebeyondtheCES.However,wewouldliketheparticipant
+machinetouseother“helper”machinesinthecloud,e.g.,toaid
+computation.Wealsowanttoallowtheparticipantstobeableto
+talktomachinesoutsidethecloud,e.g.,togetanewsstream.
+In Appendix E, we show how we can prevent such front run-
+ningattacks.Inoursolution,theparticipantanditshelperscannot
+communicatewithanyotherparticipantsortheirhelpersusingthe
+cloudnetwork.Topreventscenarioswhereaparticipantusesaproxy
+machineoutsidethecloudtosendmarketdatatootherparticipants
+(fasterthanthenetwork),wepreciselyaddadditionallatencyfordata
+beingsentoutsidethecloud.Whileoursolutionintroduceslatency
+fordatagoingout,thelatencyofspeedtradesremainsunaffected.
+4.2.6 FutureWork:FairnessbeyondLRTF
+WithDBO,itisnotguaranteedthattradesthatdonotdirectlyfollow
+the LRTF model (Theorem 1 and Equation 1) are ordered fairly.
+However,DBOstillensuresfairnessforthemostlatency-sensitive
+speedtrades.Whileensuringguaranteedfairnessfortradesthatdo
+notfollowthemodelmightbeimpossible,wediscusssomepotential
+solutions.
+Tradeswithresponsetime>𝛿:DBOdoesnotprovideanyguar-
+anteesfortradeswithresponsetimegreaterthan𝛿.Incasewehave
+access to synchronized clocks, we can try and ensure (to the ex-
+tent possible) that batches are indeed delivered at the same time
+acrossparticipants.Whenbatchesaredeliveredsimultaneously,de-
+liveryclocksalsogetsynchronizedandDBOsimplyorderstradesin
+theorderofsubmissiontime.DBOthusensuresbetterfairnessfor
+suchtrades(whendataisdeliveredsimultaneously)whilealways
+guaranteeingLRTF.Thatsaid,inourcloudexperiments(§6.3.2),
+becauseoftemporalcorrelationinlatency,DBOalone(withoutany
+synchronizedclocks)providesfairnessforsuchtradeswithhigh
+probability.
+Generalizedcomputemodelfortrades:Atrade’ssubmissiontime
+mightbegovernedbydeliverytimesofmultipledatapoints.Again
+insuchcasesifwehaveaccesstosynchronizedclocks,wecantry
+andensuresimultaneousdeliverytotheextentpossibleandachieve
+betterfairnessforsuchtrades.
+Externaldatastreams:Intheory,externaldatastreamslikenews
+eventsormarketdatafromacompetingexchangecantriggerspeed
+races.WhileDBOdoesnotdelaydeliveryofsuchstreamstothe
+participants(AppendixE),asdescribeditdoesnotguaranteefair-
+nesswithrespecttosuchstreams.Existingexchangesdonotprovide
+anysimultaneousdeliveryguaranteeswithrespecttosuchexternal
+streams.Suchstreamstypicallytraversetheinternet,andthevariabil-
+ityinnetworklatencyissubstantiallyhigher(orderofmilliseconds)
+thanthemarketdatastream(orderofmicroseconds).Potentially,
+theexchangecanserializesuchexternalstreamswiththemarket
+datastreamandensureLRTFwithrespecttosuchasuperstream.
+Suchaserializationmightnotbetrivial.Differentparticipantsmight
+(MP) Host RB context:
+{ id , t }
+latest latest_delivery
+TX Tag:
+DC DC = { id latest , clock() - t latest_delivery }
+MP trades
+SEC
+≥ δ ≥ δ
+Figure8:High-levelarchitectureoftheReleaseBuffer.TheDelivery
+ClockadvancesuponnewmarketdatareceptionfromtheCES.Incom-
+ingtradesfromtheMParetaggedwiththeDeliveryClockidandMP’s
+responsetimebeforebeingsenttotheOB/CES.
+requestdifferentexternaldatastreams.Furtherthoughtisrequired
+onwhatconstitutesafairserialization.
+5 CloudArchitectureandImplementation
+Inatypicalon-premisedeployment,theCESserversandphysical
+networkarepartofthetrustedinfrastructureoftheexchange:the
+exchangeoperatorshaveexclusiveaccesstothephysicalmachines,
+networkelementsandcables.Ontheotherhand,theMPsownthe
+physicalserversthatconnecttotheexchangenetwork.Migrating
+suchcomponentstothepubliccloudisslightlymorecomplicated:
+whiletheCESserversandMPscouldbeaccommodatedbyvirtual
+machines owned by the different parties, the network infrastruc-
+tureisstillownedbythecloudprovider.Furthermore,comparedto
+on-premisedeployments,DBOrequiresleveragingtwoextracom-
+ponentsforcorrectness:theReleaseBuffer(RB)andtheOrdering
+Buffer(OB).
+5.1 ReleaseBuffer
+Figure8depictsahigh-levelviewoftheRB’sfunctionality.The
+RBtransparentlyinterposesthecommunicationbetweentheMar-
+ketParticipant(MP)andtheOrderingBuffer(OB).Asmentioned
+previously,theRBmaintainstheDeliveryClock(DC),thelogical
+clocktupleconsistingofidofthelatestdatapointtransmittedtothe
+MPandthetimeelapsedsincethelasttransmission.Marketdata
+aregroupedintologicalbatchesbytheCESandsenttoeachMP.
+TheRBbuffersthereceivedmarketdata(packets)thatbelongtothe
+samebatch,untilthefullbatchisreceived.Uponthereceptionof
+thelastmarketdata(packet)ofthebatch,theRBchecksthetime
+elapsedsincethepreviousmarketdatabatchdeliverytotheMP:
+ifitisequaltoormorethan𝛿,thebatchisreleasedtotheMPat
+once,andtheDCisupdatedontransmissioncompletionofeach
+packet.Otherwise,thebatchisbufferedattheRBfortheappropriate
+durationtoensurethatinter-batchgapisequaltoormorethan𝛿.
+EachMPimplementsitsownstrategyonhowtorespondtoeach
+marketdatareceived,andgeneratestrades.Allthetradesfroman
+MPareinterceptedbythecorrespondingRB:uponthereception
+ofatrade,theRBneedstotagthetradeaccordinglywithaDC-
+derived timestamp so that total ordering can be achieved at the
+OrderingBuffer.Thistimestampispiggybackedoneachtradeand
+iscalculatedsimplyasthetupleconsistingofthecurrentDCidand
+therealtimeelapsedbetweentradereceptionandlatestmarketdata
+delivery.
+Where should the RB be placed in a cloud-hosted Financial Ex-
+changedeployment?Therearetwoessentialrequirementsforthe
+RBcomponent:(a)thelatencybetweenMPandRBmustbeminimal
+558
+
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA E.Guptaetal.
+sothatitdoesnotaffectcorrectness,and(b)forsecurityreasons,the
+CES VM MP VM
+RBmustbeisolatedfromtheMP,toavoidattacksthataimtotamper
+withresponsetimemeasurementsormarketdatadelivery.Deploying Execution
+OB ME
+theRBasastandaloneVMisnotasolution,asthatwouldintroduce Engine
+non-negligible,variablelatencybetweenMPandRB.EvenforVMs
+thatarecollocatedintothesamephysicalnode,inter-VMcommuni- RX TX RX TX
+cationisstillachievedviathenetworksothatcloudproviderscan
+vNIC RB vNIC
+enforcetheappropriateSDNpolicy.Aswitch-basedimplementa-
+tionwouldalsosufferfromsimilarlimitations:(a)thereislackof
+fine-grainedcontrolforVMplacementincloud(sowecannothave
+anyguaranteesaboutswitch-VMlatencies),(b)switchresourcesare
+Figure9:Cloud-hostedexchanges’architecturalview.
+scarceandsharedbymultitenanttrafficinthecloud,andavoiding
+deployedeitherasdifferentthreadsonmulticoreCPUsorevenas
+interferencewouldbeachallengingproblemtosolve.
+standaloneVMs.EachOBneedstoberesponsibleforasubsetof
+Top-tiercloudprovidersdeploy(custom)programmableNICs
+theRBs.TheOBinstancescandequeueabatchofpendingtrades
+thatleverageavarietyofASIC-orFPGA-basedacceleratorsand
+whensafeandsendthemtoME-colocatedOBforthefinalmerge
+powerfulSoCstoenforcestrictSDNpoliciesrequiredforI/Ore-
+beforetheyareforwardedtothematchingengine.AdistributedOB
+sourcemanagement,networkvirtualization,billingetc.Theseplat-
+deploymentwouldalsoallowhandlingthehigherratesofheartbeats
+formsserveasanaturalboundarybetweentheguestVMsthatare
+inthecaseofnumerousMPs,aseachOBcaneffectivelyfilteroutall
+controlledbythecustomersandthedatacenternetworkwhichis
+incomingheartbeatsbeforereachingtheCES.EachdistributedOB
+shared resource managed by the cloud operator. We believe that
+instanceneedstomaintaintheminimumofcurrentDeliveryClocks
+theRB’sfunctionalityshouldbeembeddedinthecloudproviders’
+fromitsassociatedRBs,whilethemasterOBneedstomaintainthe
+smartNICs.RBsupportintheprogrammableNICcouldbeincre-
+minimumDCfromallthedistributedOBstobeabletodequeue
+mentally deployed in the existing infrastructure, and exposed to
+tradessafelytothematchingengine.Sincecontemporaryclouddata-
+customersasavirtualNICfeaturesimilartoacceleratednetworking
+centernetworksdonotsupportin-networkmulticastformarketdata
+[5,6,12].NICperformanceisolationandbackgroundinterference
+transmission,suchdistributedapproachwouldalsoallowscalingthe
+challengesarebeyondthescopeofthispaper:MPsalreadyinvest
+CES’marketdatadistributionenginetohigherrates.
+largeamountsofmoneyfortheirco-locatedserverhardware–using
+high-endinstancesthatprovidesingle-tenancyguaranteespercloud 6 Evaluation
+node[7,8]wouldeliminateinterferencestemmingfromon-host
+Weevaluatethefeasibilityofoursolutioninhardwareusingour
+multi-tenancy.
+ownhardwaretestbed.Weusepublic-cloudexperimentstogetan
+Sincewedonothaveaccesstocloudproviders’smartNICs,we
+understandingofoverallDBO’sperformanceintermsoflatencyand
+usedanoff-the-shelfprogrammable(DPU)NIC[4]todemonstrate
+fairnessifdeployed.
+thefeasibilityofaNIC-basedRBimplementation.Weimplemented
+6.1 Methodology
+theRBfunctionalityontopofDPDK[1],runningitontheSystem-
+on-ChipARMcores.Abusy-pollingreceiveengineinterceptsall For all of the experiments (except simulation) presented in this
+incomingmarketdatatrafficandreleasesthemtothehostwhileen- section,weleverageourprototypeCESandMPimplementations.
+forcingthepacingrequirements.TheRBfunctionalityiscompletely On the CES side, we generate and distribute data to all Market
+transparentfortheMP:marketdatapacketsappearatthehost’sRX Participantsatfixedintervals.Themarketdatapointsarriveatthe
+ringunmodified. RBs,whichlateronreleasethemtotheMarketParticipants.The
+MPimplementationreliesonbusy-pollingandkernel-bypassfor
+5.2 OrderingBuffer
+low-latencyaccesstotheincomingmarketdatapackets,butdoesnot
+TheOrderingBuffercomponent’sfunctionalitycloselyresembles
+utilizeasophisticatedalgorithmfortradingdecisions;itratherbusy-
+thatofa‘sequencer’whichtagsincomingtradesinaFirst-Come-
+waitsforapre-configuredresponsetimedurationbeforegenerating
+First-Served(FCFS)mannerinexistingon-premisedeployments.In
+atrade.WeseteachMP’sreactiontimeaccordinglysothatwecan
+oursystem,itisresponsiblefororderingallreceivedtradesbased
+derivetheexpectedfinalorderingattheOBandevaluatefairness.
+ontheirDeliveryClocktimestamp,beforetheyaresubmittedtothe
+Fairnessmetric:ForanynumberofMPs,perfectfairnessisachieved
+MatchingEngine(ME).Similarlytothe‘sequencer’,theOBcompo-
+whenallcompetingtradesamongalluniquepairsofparticipants
+nentispartofthetrustedCESplatform.Inourprototypesystem,we
+arefullyordered(fromfastertoslower).Wedefinethemetricof
+haveimplementedtheOrderingBufferasadedicatedthreadwhich
+fairnessastheratioofthenumberofcompetingtradesetsthatwere
+buffersincomingtradesinapriorityqueue(forordering).When
+orderedcorrectlytothetotalnumberofcompetingtradesetsforall
+theOBhasreceivedallheartbeatsupuntilaparticularDC-derived
+uniquepairsofmarketparticipants.
+timestampitdequeuesalltherelevanttradestotheMatchingEngine
+End-to-endlatency:Wedefineend-to-endlatencyofatradeusing
+overshared-memorychannels. Equation 8 (𝐹(𝑖,𝑎) −𝐺(𝑥) −𝑅𝑇(𝑖,𝑎)). Generation time and for-
+Scaling:WithhighernumbersofMPs,asingleOBinstancewould
+wardingtimearemeasuredattheCES.Forthepurposeofreporting
+becomethebottleneck(inaggregate,numberofheartbeatsscale
+latencyandfairness(andnotfororderingtradesinDBO),weassume
+linearlywithparticipants).Insuchcases,scalingtheOBisstraight-
+thatthetriggerpointisknown.Weuseittocalculatetheresponse
+forwardbyleveragingsharding:multipleOBcomponentscouldbe
+timeoftradesatthereleasebuffer.Wealsoreportthelatencybound
+559
+
+DBO:FairnessforCloud-HostedFinancialExchanges ACMSIGCOMM’23,September10,2023,NewYork,NY,USA
+Fairness Latency(𝜇𝑠) Fairness Latency(𝜇𝑠)
+(%) avg p50 p99 p999 (%) avg p50 p99 p999
+Direct 74.62 9.60 9.52 16.58 25.25 Direct 57.61 27.9 27.48 32.5 44.03
+Max-RTT - 10.23 9.94 18.08 26.18 Max-RTT - 33.34 32.44 42.01 48.38
+DBO 100 15.92 12.16 28.82 46.80 DBO 100 47.19 46.95 55.71 67.41
+Table2:Fairnessandtradelatencyresultsonbaremetalserverswith Table3:Fairnessandend-to-endlatencyfordifferentschemes;full
+BlueField-basedRBimplementation. tracescollectedovera15-minuteduration.Forconsistency,Max-RTT
+latencies(𝐿𝑚𝑖𝑛lowerbound)arecalculatedusingthepackettimestamps
+(maximumnetworkround-trip-latencyacrossallparticipants,The-
+fromtheDBOexperimenttrace.
+orem3),shownasMax-RTT,forachievingperfectresponsetime
+fairness. 1.0
+Weevaluateoursolutiononthreedifferentsetups:(a)on-premise,
+bare-metaltestbeddeployment,(b)public-cloud-baseddeployment, 0.5
+and(c)simulation.
+Evaluationschemes:Weevaluatethreeschemes.(1)Directde-
+0.0
+livery:Thisisthebaselinescheme.Thereisnoreleasebufferor 40 60 80 100 120 140
+orderingbufferandbothtradesandmarketdatapointsjustincurthe Latency (μs)
+underlyingnetworklatency.(2)DBO:Basedonourdiscussionin
+§4.2.1,weuse𝛿 =20,𝜅 =0.25and𝜏 =20𝜇𝑠.(3)CloudEx:CloudEx
+requiresfine-grainedclocksynchronization,whichisnotavailable
+inourtest-bedandcloudexperiments.Duetoinaccuraciesinclock-
+-synchronizationinourexperiments,weexperiencefrequentrelease
+andorderingbufferoverruns.WeonlyreportresultsforCloudExin
+simulationwhereweassumeperfectlysynchronizedclocks.
+Response Time: The response time for each trade is a random
+numberbetween5and20𝜇sandiswithinthehorizon(𝛿).Note
+thatoursolutiondoesnotensurefairnessforspeedraceswherethe
+responsetime(ofthefasterparticipant)isgreaterthanthehorizon.
+Wepickedahorizontoaccommodatemajorityofthespeedraces.
+Butweexplicitlytakeintoaccountthislimitation.Wepresentlatency
+results with longer horizons and include experiments where the
+responsetimeexceedsthehorizon.
+6.2 EvalutiononDPU-enabledbaremetalservers
+Ourlabsetupconsistsofthreemachines:oneCESserverandtwo
+MPservers.TheCESserverisequippedwithanNvidiaConnectX-5
+NIC with two 100Gbps ports. Each MP server hosts one Nvidia
+BlueField-2DPUwithtwo100Gbpsports.Theserverhasadual-
+CPUIntelXeonprocessorrunningat3.1GHz.EachBlueField-2
+DPUhaseightARMv8A72cores.Allmachinesareconnectedvia
+a100GbEswitch.WerunLinuxkernel(v5.4.0)andDPDK(v21.11)
+fortheCES,RB,andMPnetworkengines.
+The CES is generating market data every 40𝜇𝑠 (25𝐾 ticks per
+second),andthemarketparticipantserversaregeneratingresponses
+within𝛿 timehorizonsincethereceptionofthedata.TheRBis
+executingontheBlueField-2DPU’sSoC.
+Table2showstheachievedfairnessandlatencyofoursystem.
+Direct delivery achieves poor fairness because of differences in
+networklatency.DBOachievesperfectfairnessatthecostoflatency.
+Inparticular,toachieveresponsetimefairness,theOBwaitsfor
+theslowestparticipant.ThelatencyislowerboundedbyMax-RTT
+(Theorem3).ThedifferencebetweentheMax-RTTandDBOisdue
+tobatching,pacingandheartbeats.
+6.3 Cloud-hostedTestbed
+We wish to understand how our system performs in a real pub-
+lic cloud-based deployment with several market participants. As
+discussed in §5.1, we do not have access to the cloud providers’
+programmableNICstodeploytheRBfunctionality.Toworkaround
+FDC
+DBO(20,25)
+DBO(45,60)
+DBO(80,120)
+Max-RTT
+Figure10:CDFsoftheend-to-endlatencyforvariousDBOconfigura-
+tions.
+thislimitation,wehaveadjustedourRBimplementationsothatit
+runsasaco-locatedprocesswiththemarketparticipant’sexecution
+engineontheMPVMs.Insuchconfiguration,theRBisusinga
+kernel-bypassnetworkstacktotakeoveradedicatedvNICwhich
+it uses to receive the UDP stream of market data from the CES,
+andtosendbackanytradessubmittedbytheMP.Tofacilitatefast
+MP-to-RBcommunicationwerelyonshared-memory-basedIPC
+primitives.Clearly,suchasolutiondoesnotprovideanysecurity
+guaranteesastheRBsrunonVMsownedbythemarketparticipants
+whicharenotpartoftheCES’TrustedComputingBase,andcould
+easilytamperwiththeRB’smarketdatadeliveryengineorthede-
+liveryclockmeasurements.Itallowsus,however,toevaluatethe
+real-worldperformance(i.e.,achievablethroughputandlatency)of
+ourDBOsysteminapublicclouddeployment.
+Wesetouttoevaluatethefairnessandend-to-endlatencyofdif-
+ferentschemes.WedeploytenmarketparticipantsandoneCESas
+virtualmachines(Standard_F8s)inMicrosoftAzure.Weconfigure
+theaggregateservicerateto125,000transactions(trades)persecond
+(marketdatagenerationintervalisfixedto40𝜇𝑠).Table3summa-
+rizestheachievedfairnessandend-to-endlatencyresultsfordirect
+deliveryandDBO.
+Fairness:Directdeliveryachievespoorfairnessinourexperiments.
+Comparedtoourtest-bedwherethereisnonetworktrafficandthe
+variabilityinlatencyacrossparticipantsislower,directdeliveryper-
+formsworseinthecloud.DBOalwaysachieveperfectfairness.We
+discussfairnessforslowrespondersin§6.3.2.
+Latency:Asexpected,directdeliveryachievesthelowestlatency,
+atthecostoffairness.Ontheotherhand,DBOtradesofflatency
+to achieve perfect fairness, but it still achieves sub-100𝜇𝑠 p999
+tail latency in the public cloud. This latency is well within the
+requirementsofmanymajorexchanges.IEX,forexample,amajor
+exchangethatpridesitselfonfairnesshad700𝜇𝑠 latency[3].We
+believethatwithadditionaloptimizationssuchasnetworktraffic
+prioritization,in-networkmulticast,proximityplacementgroups,
+thisnumbercouldbefurtherbroughtdown.Thep9999latencyis
+muchhigher(~3.5ms);fulltraceanalysisshowsthatpacketdroprate
+isverylowbutweidentifiedawell-aligned,periodicqueuebuildup
+attheOBwhichwebelieveisduetoschedulingartifactsintheVM.
+560
+
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA E.Guptaetal.
+RT(in𝜇𝑠) 10-15 15-20 20-25 25-30 30-35 35-40
+Direct 0.45 0.46 0.46 0.46 0.46 0.46
+DBO 1.0 1.0 0.999 0.999 0.997 0.985
+Table4:Fairnessfortradeswithresponsetime>𝛿=20.
+600
+400
+200
+0
+0 250 500 750 1000 1250 1500 1750 2000
+Time (ms)
+)sμ(
+ycnetaL
+60
+40
+20
+0
+10 30 50 70 90
+# Participants
+Figure11:Networktraceusedforsimulation.
+6.3.1 UnderstandingDBOlatency:HowdoDBOparameters
+affectend-to-endtradelatency?Figure10illustratestheCDFofthe
+latencywithdifferentDBOconfigurations.Here,DBO(𝑥,𝑦)refers
+tousingahorizon𝛿 =𝑥andbatchsize(1+𝜅)·𝛿 =𝑦.Wealsoinclude
+theoptimallatencybound(Max-RTT).Asexpected,increasingthe
+horizonandthebatchsizeincreasesthelatency.Whenbatchsize
+is60𝜇sweseeoneinflectionpoint.Forbatchsizeof120𝜇𝑠wesee
+twoinflectionpoints.Theseinflectionpointsareadirectresultof
+batching.Sinceanewmarketdatapointisgeneratedevery40𝜇𝑠,
+forbatchsizeof60𝜇𝑠,roughly2/3ofthebatchescontaintwodata
+points. The first point in such batches incurs 40𝜇𝑠 of additional
+delay compared to the second point. This difference creates the
+inflection point. Similarly for batch size 120𝜇𝑠, on average there
+arethreemarketdatapoints,thefirstpointinthebatchincursan
+additionaldelayof80𝜇𝑠whilethesecondpointincursanadditional
+delay of 40𝜇𝑠. For batch size of 25𝜇𝑠, which contains only one
+marketdatapoint,thebatchingdelayiszero.Thedeviationfromthe
+optimallatencyboundisprimarilyduetoheartbeats.Recallwhen
+network latency is well behaved, pacing does not add additional
+delay.Since𝜏 =20,heartbeatscostanadditionallatencydelayof
+10𝜇𝑠onaverage.
+6.3.2 Tradeswithresponsetime>𝛿
+DBOonlyguaranteesfairnessfortradeswithalimitedresponse
+time.Table4showsthefairnessforsuchtradesfordifferentvalues
+of response time. In each experiment, the response time for the
+tradeisderivedfromarangeofvalues(shownonthetopofthe
+table).Directdeliveryachievespoorfairness(similartoTable3).
+In contrast, even though the response time of trades exceeds the
+horizon𝛿,DBOachievesclosetoidealfairness.DBOorderssuch
+tradesfairly,iftheinter-deliverytimeforthebatchthattriggeredthe
+tradeandthelastbatchcorrespondingtothetradeissameacrossall
+participants.Inthecloudexperiments,eventhoughlatencydiffers
+acrossparticipants,foranyparticularparticipant(majorityofthe
+time)thelatencyexhibitslittlevariation.Figure11showstheend-
+to-endnetworklatencyforaparticularparticipantinthisexperiment.
+Asaresult,theinter-deliverytimeforbatchesissimilar(=(1+𝜅)·
+𝛿) across all participants for most of the time. DBO is thus able
+tocorrectforstaticdifferencesinlatencyacrossparticipantsand
+achievefairness.
+6.4 Simulation
+We use simulations to evaluate DBO as we scale the number of
+participantsandtocomparewithCloudEx.Weuseanetworktrace
+ofroundtriptimesbetweentheCESandanRBfromthecloud-
+hostedtestbed,asillustratedinFigure11.Theone-waylatencies
+betweenCESandeachRBarecalculatedbytakingrandomslices
+)sμ(
+ycnetaL
+DBO
+300
+200
+100
+0
+10 30 50 70 90
+# Participants
+(a)Meanlatency
+)sμ(
+ycnetaL
+Max-RTT
+(b)Taillatency(p99)
+Figure12:Latencyasafunctionofthenumberofmarketparticipants.
+1.000
+0.999
+0.998
+0.997
+0.996
+0.995
+0.994
+0 200 400 600
+Latency (μs)
+ssenriaF
+1.000
+0.999
+0.998
+CloudEx, 10 MPs 0.997
+CloudEx, 60 MPs 0.996
+DBO, 10 MPs
+0.995
+DBO, 60 MPs
+0.994
+0 200 400 600
+Tail Latency p99 (μs)
+(a)Meanlatency
+ssenriaF
+CloudEx, 10 MPs
+CloudEx, 60 MPs
+DBO, 10 MPs
+DBO, 60 MPs
+(b)Taillatency(p99)
+Figure13:CloudEx(perfectclock-synchronization)vsDBO.Wevary
+theone-wayCloudExlatencythresholdsfrom15to290𝜇s.
+ofthenetworktraceandhalvingtheRTTs.Theresponsetimesare
+between5to20𝜇𝑠.
+Scalingthenumberofparticipants.Figure12showsthemeanand
+thetaillatency(p99)forDBOaswescalethenumberofparticipants.
+We also include the latency bound (Max-RTT) in the figure for
+reference.Asexpected,thelatencyboundincreaseswiththenumber
+ofparticipants.Theend-to-endlatencyforDBOislimitedbythis
+bound,withadditionaldelayduetobatching,pacingandheartbeats.
+WethusseeasimilartrendasMax-RTTinthelatencyforDBO.
+ComparisonwithCloudEx.Figure13showsthefairnessandend-
+to-endlatencyofDBOandCloudEx(assumingperfectclocksyn-
+chronization).Wereportresultsforscenarioswith10and60market
+participantsrespectively.ForCloudEx,weusedifferentvaluesof
+latencythresholds:asweincreasethelatencythresholds,fairness
+improvesbutlatencydegrades.Here,CloudExachievesperfectfair-
+ness only when the one-way latency threshold is set higher than
+themaximumone-waylatencyvalueinthetrace.CloudExincurs
+thishighlatencyatalltimes,evenwhentheunderlyingnetwork
+latencyislow.Incontrast,inthecaseofDBO,aspikeinlatency
+onlyoccurswhenthereisasurgeintheunderlyingnetworklatency.
+DBOmaintainsperfectfairnessatareducedlatencycomparedto
+CloudEx.
+7 Conclusion
+WepresentedDBO,anovelmechanismtoprovidefairnessforhigh
+frequency trading in cloud environments. DBO is incrementally
+deployable,achievesguaranteedfairnessandlowlatencywhilestill
+operatingathightransactionrates.
+Acknowledgements
+WethankGrahamMosley,SadjadFouladi,MarkRussinovich,Anu-
+pamPandey,RupeshKhendry,MarkGalgano,andAlanRoss.We
+furtherthankRobertPark,andAlpeshSethiafortheirinsightful
+feedbackonfinancialexchangearchitecturesandhigh-frequency
+tradingworkloads.
+Thisworkdoesnotraiseanyethicalconcerns.
+561
+
+DBO:FairnessforCloud-HostedFinancialExchanges ACMSIGCOMM’23,September10,2023,NewYork,NY,USA
+References
+[1] 2013.DataPlaneDevelopmentKit(DPDK). http://dpdk.org/
+[2] 2017.NYSEXDPClientSpecification. https://www.nyse.com/publicdocs/nyse/
+data/XDP_Common_Client_Specification_v2.1e.pdf
+[3] 2019.TheCostOfExchangeServices. https://finansdanmark.dk/media/mstbpq23/
+iex-and-market-data-cost-2019.pdf
+[4] 2021. NVIDIA BlueField-2. https://www.nvidia.com/content/dam/en-zz/
+Solutions/Data-Center/documents/datasheet-nvidia-bluefield-2-dpu.pdf
+[5] 2023. AmazonAWSElasticFabricAdapter. https://docs.aws.amazon.com/
+AWSEC2/latest/UserGuide/efa.html
+[6] 2023.AmazonAWSElasticNetworkAdapter. https://docs.aws.amazon.com/
+AWSEC2/latest/UserGuide/enhanced-networking-ena.html
+[7] 2023. AWSDedicatedHost. https://docs.aws.amazon.com/AWSEC2/latest/
+UserGuide/dedicated-instance.html
+[8] 2023. AzureDedicatedHost. https://azure.microsoft.com/en-us/products/
+virtual-machines/dedicated-host
+[9] MatteoAquilina,EricBBudish,andPeterO’Neill.2020.Quantifyingthehigh-
+frequencytrading"armsrace":Asimplenewmethodologyandestimates.Techni-
+calReport.WorkingPaper.
+[10] BrianNigito.2020.MulticastandtheMarkets. https://signalsandthreads.com/
+multicast-and-the-markets/
+[11] EricBudish,PeterCramton,andJohnShim.2015.Thehigh-frequencytrading
+armsrace:Frequentbatchauctionsasamarketdesignresponse.TheQuarterly
+JournalofEconomics130,4(2015),1547–1621.
+[12] DanielFirestone,AndrewPutnam,SambhramaMundkur,DerekChiou,Alireza
+Dabagh,MikeAndrewartha,HariAngepat,VivekBhanu,AdrianCaulfield,Eric
+Chung,etal.2018.Azureacceleratednetworking:Smartnicsinthepubliccloud.
+In15thUSENIXSymposiumonNetworkedSystemsDesignandImplementation
+(NSDI18).51–66.
+[13] AhmadGhalayini,JinkunGeng,VighneshSachidananda,VinaySriram,Yilong
+Geng,BalajiPrabhakar,MendelRosenblum,andAnirudhSivaraman.2021.
+CloudEx:afair-accessfinancialexchangeinthecloud.InHotOS’21:Work-
+shoponHotTopicsinOperatingSystems,AnnArbor,Michigan,USA,June,1-3,
+2021,SebastianAngel,BarisKasikci,andEddieKohler(Eds.).ACM,96–103.
+https://doi.org/10.1145/3458336.3465278
+[14] PiotrJGmytrasiewiczandEdmundHDurfee.1992.Decision-theoreticrecursive
+modelingandthecoordinatedattackproblem.InArtificialIntelligencePlanning
+Systems.Elsevier,88–95.
+[15] LeslieLamport.2019.Time,clocks,andtheorderingofeventsinadistributed
+system.InConcurrency:theWorksofLeslieLamport,DahliaMalkhi(Ed.).ACM,
+179–196. https://doi.org/10.1145/3335772.3335934
+[16] Yuliang Li, Gautam Kumar, Hema Hariharan, Hassan M. G. Wassel, Peter
+Hochschild,DavePlatt,SimonL.Sabato,MinlanYu,NanditaDukkipati,Prashant
+Chandra,andAminVahdat.2020.Sundial:Fault-tolerantClockSynchronization
+forDatacenters.In14thUSENIXSymposiumonOperatingSystemsDesignand
+Implementation,OSDI2020,VirtualEvent,November4-6,2020.USENIXAs-
+sociation,1171–1186. https://www.usenix.org/conference/osdi20/presentation/
+li-yuliang
+[17] JenniferLundeliusandNancyA.Lynch.1984.AnUpperandLowerBoundfor
+ClockSynchronization.Inf.Control.62,2/3(1984),190–204. https://doi.org/10.
+1016/S0019-9958(84)80033-9
+[18] DonaldMacKenzie.2019.HowFragileIsCompetitioninHigh-FrequencyTrading.
+Tabbforum,March26(2019).
+[19] VasiliosMavroudisandHaydenMelton.2019.Libra:FairOrder-Matchingfor
+ElectronicFinancialExchanges.InProceedingsofthe1stACMConferenceon
+AdvancesinFinancialTechnologies,AFT2019,Zurich,Switzerland,October
+21-23,2019.ACM,156–168. https://doi.org/10.1145/3318041.3355468
+[20] RadhikaMittal,VinhTheLam,NanditaDukkipati,EmilyR.Blem,HassanM.G.
+Wassel,MoniaGhobadi,AminVahdat,YaogongWang,DavidWetherall,and
+DavidZats.2015.TIMELY:RTT-basedCongestionControlfortheDatacenter.
+InProceedingsofthe2015ACMConferenceonSpecialInterestGrouponData
+Communication,SIGCOMM2015,London,UnitedKingdom,August17-21,2015,
+SteveUhlig,OlafMaennel,BradKarp,andJitendraPadhye(Eds.).ACM,537–
+550. https://doi.org/10.1145/2785956.2787510
+[21] NASDAQ. 2021. Nasdaq and AWS Partner to Transform
+Capital Markets. https://www.nasdaq.com/press-release/
+nasdaq-and-aws-partner-to-transform-capital-markets-2021-12-01
+[22] POSTTRADE. 2021. CME and Nasdaq move their mar-
+kets to the cloud. https://posttrade360.com/news/technology/
+cme-and-nasdaq-move-their-markets-to-the-cloud/
+562
+
+ACMSIGCOMM’23,September10,2023,NewYork,NY,USA E.Guptaetal.
+with higher response time, the delivery clock at the time of sub-
+missionwilleitherread𝑂(𝑗,𝑏)=𝐷𝐶(𝑗,𝑏))=⟨𝑙𝑑(𝑖,𝑎)),𝑅𝑇(𝑗,𝑏)+
+𝑅𝐵_𝑀𝑃_𝐿(𝑗,𝑥,𝑏)⟩ (if (𝑗,𝑏) wassubmittedbeforethenextbatch,
+i.e.,𝑆ˆ(𝑗,𝑏) <𝐷ˆ(𝑗,𝑙𝑑(𝑖,𝑎)+1))or𝐷𝐶(𝑗,𝑏) = ⟨𝑦,𝑆ˆ(𝑗,𝑏)−𝐷ˆ(𝑗,𝑦)⟩
+Figure14:ProofofLemma2. with𝑦 >𝑙𝑑(𝑖,𝑎).
+Appendicesaresupportingmaterialthathasnotbeenpeer-reviewed. C3impliesthat,𝑅𝑇(𝑖,𝑎) <𝑅𝑇(𝑗,𝑏)−(𝐵 ℎ(𝑖)−𝐵 𝑙(𝑗))and𝐵 𝑙(𝑖) ≤
+A ProofofLemma2
+𝑅𝐵_𝑀𝑃_𝐿(𝑖,𝑥,𝑎) ≤𝐵 ℎ(𝑖),𝐵 𝑙(𝑗) ≤𝑅𝐵_𝑀𝑃_𝐿(𝑗,𝑥,𝑏) ≤𝐵 ℎ(𝑗).As
+aresult,𝑅𝑇(𝑖,𝑎)+𝑅𝐵_𝑀𝑃_𝐿(𝑖,𝑥,𝑎) <𝑅𝑇(𝑗,𝑏)+𝑅𝐵_𝑀𝑃_𝐿(𝑗,𝑥,𝑏)
+Thelemmastatesthatforresponsetimefairness,theinter-delivery Asaresult,inboththecases,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏).Henceproved. □
+timesshouldbethesameacrossallMPs.
+PROOF. Toprovethatthelemmaconditionisnecessarywewill D ImpactofLosses
+showthatifthisconditionisnotmetthennosystemexistswhich
+Impactofmarketdatapointsbeinglost:Likestatus-quoweadvo-
+canachieveresponsetimefairnessforarbitrarytradeorders.
+catemarketparticipantsrequestinganydroppedmarketdatapoints
+Considerthefollowingscenario(Figure14)wherethelemma
+separately.Theretransmittedmarketdatapointdoesnotupdatethe
+conditionisnotmet.Let𝐷(𝑖,𝑥 +1)−𝐷(𝑖,𝑥) =𝑐1,𝐷(𝑗,𝑥 +1)−
+deliveryclockatthereleasebuffer.Thisway,onlytradesgenerated
+𝐷(𝑗,𝑥)=𝑐2.Withoutlossofgeneralityweassume𝑐1<𝑐2.
+usingtheretransmitteddatapointsgetaffected.However,fairness
+Considerhypotheticaltrades(𝑖,𝑎)and(𝑗,𝑏)s.t.𝑆(𝑖,𝑎)=𝐷(𝑖,𝑥+
+forallothertradesremainsunaffected.Thelatencyofthesystem
+1)+𝑐3and𝑆(𝑗,𝑏)=𝐷(𝑗,𝑥+1)+𝑐4.Further,wecanpick𝑆(𝑖,𝑎)and
+cangetaffectedasthedeliveryclockoftheparticipantexperiencing
+𝑆(𝑗,𝑏)s.t.𝑐3>𝑐4and𝑐1+𝑐3<𝑐2+𝑐4.Nowweconsidertwosce-
+losseslagstransientlyuntilthenextdatapointisdelivered.Ifdata
+nariosforhowthesetradesweregenerated.Thesetwoscenariosare
+pointsaregeneratedinfrequently,thenthedeliveryclockofthepar-
+indistinguishablefromthecloudprovider/exchange’sperspective.
+ticipantmighttakealargetimetorecover.Topreventthisexplicitly,
+Case1:𝑇𝑃(𝑖,𝑎)=𝑇𝑃(𝑗,𝑏)=𝑥+1.Here,
+weadvocateCESsendingperiodicheartbeats.However,webelieve
+𝑆(𝑖,𝑎)−𝐷(𝑖,𝑥+1)=𝑐3,𝑆(𝑗,𝑏)−𝐷(𝑗,𝑥+1)=𝑐4. (12) thatmajorexchangesalreadygeneratedataataveryhighfrequency
+Since𝑐3>𝑐4,condition𝐶1impliesthat,𝑂(𝑖,𝑎) >𝑂(𝑗,𝑏).
+(adatapointevery20𝜇𝑠)andsuchheartbeatsarenotnecessary.
+Case2:𝑇𝑃(𝑖,𝑎)=𝑇𝑃(𝑗,𝑏)=𝑥.Here, Impactoftradesbeinglost:Intheeventatradeislost,thepar-
+ticipant can retransmit the trade. The retransmitted trade will be
+𝑆(𝑖,𝑎)−𝐷(𝑖,𝑥)=𝑐1+𝑐3,𝑆(𝑗,𝑏)−𝐷(𝑗,𝑥)=𝑐2+𝑐4. (13)
+taggedbythedeliveryclockatthetimeoftheretransmission.Such
+In this case, since𝑐1+𝑐3 < 𝑐2+𝑐4, for response time fairness aretransmittedtradewillincurunfairness.However,fairnessofall
+theorderingmustinsteadsatisfytheopposite,𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏).A othertradesremainsunaffected.
+contradiction!Thus,nosystemcanachieveresponsetimefairness Impact of heartbeats being lost: Lost hearbeats do not impact
+inboththesescenarios. □ fairness. However, if a heartbeat is lost then the OB might have
+towaitanadditionaltime(forthenextheartbeattoarrive)before
+B ProofofCorollary1
+forwardingthetradestotheCESincreasinglatency(Equation8).
+PROOF. The proof is identical to that of Lemma 2. The only
+E Thwartingfront-runningattacks
+differencebeing,weconsidertrades(𝑖,𝑎),(𝑗,𝑏)andtriggerpoint𝑥
+and𝑥+1,s.t.,𝑐1+𝑐3islessthan𝛿. □ We impose two simple constraints on communication to prevent
+frontrunning.(1)Aparticipantmachineanditshelpermachines
+C ProofofTheorem4 cancommunicatewitheachotherfreelybuttheycannotcommu-
+PROOF. TotheprovethistheoremwewillshowthatwithDBO nicatewithanyothermachinesinthecloud.Thisrestrictioncan
+theorderingoftrades(𝑖,𝑎)and(𝑗,𝑏)thatmeettheTheoremcondi- beimposedeasilybycloudproviderstodayusingsecuritygroups.
+tionis𝑂(𝑖,𝑎) <𝑂(𝑗,𝑏). Thisrestrictionensuresthataparticipantmachinecannotgetmarket
+Consider a trade (𝑖,𝑎) with response time less than𝛿 −𝐵 ℎ(𝑖). datafromotherparticipantmachinesintheclouddirectly.Next,we
+Let𝐷ˆ(𝑖,𝑥)representthedeliverytimeof𝑥 attheRB.Theobserved willensurethataparticipantmachinecannotgetanearliermarket
+submissiontimeatRB(𝑆ˆ(𝑖,𝑎))forsuchatradewillbe, datafeedfromoutsidethecloud.Wewilldosobyrestrictingthata
+participantcanonlysenddatapoint𝑥 outofthecloud,when𝑥 has
+𝑆ˆ(𝑖,𝑎)=𝐷ˆ(𝑖,𝑥)+𝑅𝑇(𝑖,𝑎)+𝑅𝐵_𝑀𝑃_𝐿(𝑖,𝑥,𝑎). (14)
+beendeliveredtoallparticipantsinthecloud.Thisway,marketdata
+where 𝑅𝐵_𝑀𝑃_𝐿(𝑖,𝑥,𝑎) represents the combined network round pointscanonlybeavailableoutsidethecloudoncetheyhavebeen
+trip latency between RB𝑖 and 𝑀𝑃 𝑖 for trigger point 𝑥 and trade deliveredtoalltheparticipants.(2)Thehelpermachinescannotsend
+(𝑖,𝑎) .Because𝑅𝐵_𝑀𝑃_𝐿(𝑖,𝑥,𝑎) isboundedby𝐵 ℎ(𝑖),𝑅𝑇(𝑖,𝑎)+ dataoutsidethecloud.Anydata(excludingthetradeorders)from
+𝑅𝐵_𝑀𝑃_𝐿(𝑖,𝑥,𝑎) <𝛿or𝑆ˆ(𝑖,𝑎) <𝐷ˆ(𝑖,𝑥)+𝛿. aparticipantbeingsentoutsidethecloudistaggedbythedelivery
+Recall,consecutivebatchesareatleastseparatedby𝛿.Thismeans clockattheRBandbufferedatagateway.Thedatasentbythepar-
+that the trigger point (𝑥 = 𝑇𝑃(𝑖,𝑎)) must be within the last re- ticipantcouldpotentiallybeamarketdatapointwithidlessthanor
+ceivedbatch.Thepoint𝑙𝑑(𝑖,𝑎)isalsothelastpointinthisbatchand equaltothelastpointid(firsttuple)ofthedeliveryclocktimestamp.
+𝐷ˆ(𝑖,𝑙𝑑(𝑖,𝑎)) =𝐷ˆ(𝑖,𝑥).Thedeliveryclockfortrade(𝑖,𝑎)willthus Thegatewaythusbuffersthisdatauntilitissurethatthealldata
+be:𝑂(𝑖,𝑎)=𝐷𝐶(𝑖,𝑎)=⟨𝑙𝑑(𝑖,𝑎),𝑅𝑇(𝑖,𝑎)+𝑅𝐵_𝑀𝑃_𝐿(𝑖,𝑥,𝑎)⟩. pointswithidlessthanthelastdatapointidinthedeliveryclock
+Withbatching,forparticipant𝑗,𝑥 and𝑙𝑑(𝑖,𝑎)alsobelongtothe timestamphavebeendelivered.Forthispurpose,RB’speriodically
+same batch 𝐷ˆ(𝑗,𝑙𝑑(𝑖,𝑎)) = 𝐷ˆ(𝑗,𝑥). For a competing trade (𝑗,𝑏) communicatetheirdeliveryclocktothegateway.
+563
+

@@ -24,7 +24,21 @@ class FinancialExchangeController(app_manager.RyuApp):
         self.mac_to_port = {}
         # Track multicast groups
         self.multicast_groups = {}
+        # CloudEx: Simulated clock offsets per host (for fairness experiments)
+        self.clock_offsets = {1: 0.0, 2: 0.0, 3: 0.0, 4: 0.0}  # ms offset per port
+        # CloudEx: Artificial delay (ms) for fairness tuning
+        self.artificial_delay_ms = 0.0
         self.logger.info("Financial Exchange Controller started")
+
+    def set_clock_offset(self, port, offset_ms):
+        """Set simulated clock offset for a port (CloudEx)"""
+        self.clock_offsets[port] = offset_ms
+        self.logger.info(f"Set clock offset for port {port}: {offset_ms} ms")
+
+    def set_artificial_delay(self, delay_ms):
+        """Set artificial delay for multicast (CloudEx)"""
+        self.artificial_delay_ms = delay_ms
+        self.logger.info(f"Set artificial multicast delay: {delay_ms} ms")
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -118,23 +132,23 @@ class FinancialExchangeController(app_manager.RyuApp):
         datapath.send_msg(out)
 
     def handle_multicast(self, msg, datapath, in_port, pkt):
-        """Handle multicast packets - basic implementation"""
+        """Handle multicast packets - basic implementation with CloudEx-inspired delay and clock offset"""
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         dpid = datapath.id
-        
-        # For basic multicast, just flood to all ports except incoming
         actions = []
         for port in range(1, 5):  # Assuming 4-node star topology
             if port != in_port:
+                # CloudEx: Add artificial delay and simulated clock offset
+                total_delay = self.artificial_delay_ms + self.clock_offsets.get(port, 0.0)
+                if total_delay > 0:
+                    import time
+                    time.sleep(total_delay / 1000.0)  # convert ms to s
                 actions.append(parser.OFPActionOutput(port))
-        
-        # Send packet out
         data = None
         if msg.buffer_id == ofproto.OFP_NO_BUFFER:
             data = msg.data
-
         out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
                                  in_port=in_port, actions=actions, data=data)
         datapath.send_msg(out)
-        self.logger.info(f"Multicast packet forwarded to all ports from {in_port}")
+        self.logger.info(f"Multicast packet forwarded to all ports from {in_port} with CloudEx delay/offsets")

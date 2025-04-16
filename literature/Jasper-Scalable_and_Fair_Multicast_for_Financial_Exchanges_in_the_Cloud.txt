@@ -1,0 +1,1261 @@
+Jasper: Scalable and Fair Multicast for Financial
+Exchanges in the Cloud
+Muhammad Haseeb Jinkun Geng Ulysses Butler
+NewYorkUniversity StanfordUniversity NewYorkUniversity
+Xiyu Hao Daniel Duclos-Cavalcanti∗ Anirudh Sivaraman
+NewYorkUniversity TechnicalUniversityofMunich NewYorkUniversity
+ABSTRACT toalargenumberofmarketparticipants(MPs).Thisdatais
+Financialexchangeshaverecentlyshownaninterestinmi- usedbyMPstomaketradingdecisions,andHighFrequency
+gratingtothepubliccloudforscalability,elasticity,andcost Trading(HFT)firmsoftencompeteonhowquicklytheycan
+savings.However,financialexchangesoftenhavestrictnet- placetradesbasedonthisinformation.Thisdatashouldbe
+workrequirementsthatcanbedifficulttomeetonthecloud. deliveredfairly,meaningeveryMPshouldreceivethedata
+Notably,marketparticipants(MPs)tradebasedonmarket almostsimultaneously,ensuringnoMPshaveunfairadvan-
+dataaboutdifferentactivitiesinthemarket.Exchangesof- tagesoverothers.Furthermore,firmsrequireconsistently
+tenuseswitchmulticasttodisseminatemarketdatatoMPs. lowlatencyfromexchangetoMPsformarketdatadistribu-
+However,ifoneMPreceivesmarketdataearlierthananother, tionsothatMPstradeonthemostup-to-dateinformation.
+thatMPwouldhaveanunfairadvantage.Topreventthis, Whileahigh-performancefairmulticastserviceinon-prem
+financial exchanges often equalize exchange-to-MP cable clusters might be implemented using switch support and
+lengthstoprovidenear-simultaneousreceptionofmarket
+carefullyengineerednetworks,1thesituationismuchlessfa-
+dataatMPs. vorableinthepubliccloud,wherethehardware(e.g.,switch)
+Asacloudtenant,however,buildingafairmulticastser- supportformulticastisnotusuallyavailabletocloudten-
+vice is challenging because of the lack of switch support ants.Thepubliccloudalsoexhibitshigherandmorevaried
+formulticast,highlatencyvariance,andthelackofnative latency than on-prem clusters. As a result, implementing
+mechanisms for simultaneous data delivery in the cloud. suchamulticastserviceforfinancialexchangesinthepublic
+Jasperintroducesasolutionthatcreatesanoverlaymulticast cloudbecomeschallenging,especiallyforcloudtenants.
+tree within a cloud region that minimizes latency and la- In general, a financial exchange imposes two major re-
+tencyvariationsthroughhedging,leveragesrecentadvance- quirementsonthemulticastserviceitemploys.(1)Scalability:
+mentsinclocksynchronizationtoachievesimultaneousde- ThenumberofMPsusuallyrangesfrom100sto1000s[30].
+livery, and addresses various sources of latency through Marketinformationneedstobemulticasttoalargenumber
+anoptimizedDPDK/eBPFimplementation—whilescalingto ofMPswhilemaintainingconsistentlylowlatencyindata
+1000+emulatedreceivers.Jasperoutperformsapriorsystem delivery.(2)Fairness:MarketdatashouldbedeliveredtoMPs
+CloudEx[12]andacommercialmulticastsolutionprovided nearlysimultaneouslywithlowspatial(i.e.,acrossreceivers)
+byAmazonWebServices[38]. latencyvariance.Otherwise,MPswhoreceivedataearlier
+wouldbeabletoactonitfaster,disadvantagingotherMPs
+inthesystem.
+1 INTRODUCTION
+Wefindpriorsystemsfallshortoftheserequirements(§9).
+Therehasbeenagrowinginterestfrombothindustry[15,16,
+IPmulticastdoesnotmeetourrequirementsasthepublic
+29,31]andacademia[12]inmigratingfinancialexchanges
+clouddoesnotprovideswitchmulticastforcloudtenants
+tothepubliccloudbecauseofmultiplebenefitsprovidedby
+due to scalability issues [39]. Application layer multicast
+thecloud,includingscalability,robustinfrastructure,flexible
+(ALM)[3,20,27]focusesonimprovingthroughputorlatency
+resourceallocation,andpotentialcostsavings[6].However,
+byfindingalternative“detoured”pathsinanoverlaynetwork
+migratingafinancialexchangefromon-premclusterstothe
+ofmachinesinthewide-areaInternet.Wediscussin§2.2
+cloudposesseveralchallenges.
+howtheabsenceoftriangularinequalityviolationsforpath
+Onefundamentalrequirementforatypicalfinancialex-
+latencies in a single cloud region substantially limits the
+changeisafairmulticastservice[12].Suchaservice(e.g.,
+benefitsonemaygetfromfindingthebestpathsinanoverlay
+NASDAQ’sITCHprotocol[28])isresponsibleforsending
+network of VMs. Some recent projects address the same
+dataaboutthestateofthemarket(alsocalledmarketdata)
+1Somefinancialfirmsmeasurewirelengths[40]toachievesimultaneous
+∗WorkdonewhileatNewYorkUniversity deliveryofmarketdatatoallMPs.
+1
+4202
+beF
+41
+]IN.sc[
+1v72590.2042:viXra
+
+questionofmulticastfairnessaswedo,suchasCloudEx[12]
+andOctopus[15].CloudExachievesfairness,albeitwitha
+significantincreaseinend-to-endlatency,andscalestoless 0
+than100receivers.Octopusreliesonhardwaresupportfrom 1
+cloud providers, utilizing SmartNICs to establish fairness, 2
+andithasonlybeenshowntoworkforlessthan10receivers. 3
+To satisfy the requirements of scalability and fairness 4
+whileachievinglowlatencyinthepubliccloud,wedevelop 5
+Jasper,anoverlaymulticastserviceforcloud-hostedfinan- 6
+cial exchanges. To achieve low latency while scaling to a 7
+8
+large number of receivers, Jasper builds a tree of proxies
+9
+formulticast,insteadofhavingthesenderdirectlyunicast
+0 1 2 3 4 5 6 7 8 9
+itsmessagetoallreceivers.Effectively,atreereducesthe Sender
+serializationortransmissiondelayrequiredtounicastmulti-
+plemessagesback-to-back,butaddsadditionalhopsinthe
+sender-to-receiver path (§4). Using such a tree for broad-
+castisanestablishedtechniqueinMessagePassingInterface
+(MPI) literature [7, 37]. In Jasper, we use these trees as a
+startingpoint,anddevelopnewtechniquestolowerlatency
+andlatencyvarianceandachievefairnessindatadelivery
+whilescalingtoalargenumberofreceivers.
+First,wedefineamechanismforfindinganappropriate
+structure of tree i.e., depth 𝐷 and breadth/fan-out 𝐹, that
+achieveslowlatencyforagivennumberofreceiversbymin-
+imizingtheimpactofmessagereplicationandtransmission
+delays.Weproposeaheuristicfortheselectionof𝐷 and𝐹
+anddemonstratehowamoresophisticatedtechniquedoes
+notprovideasubstantialimprovementoverourheuristic.
+Second, we introduce VM hedging in Jasper, motivated
+byrequesthedging[33],tolowerlatencyvariance,counter
+latencyspikes,andnarrowdownthedeliverywindowofa
+multicastmessage(i.e.,thedifferenceintimebetweenthe
+firstandlastreceptionofamulticastmessage).Themainidea
+inVMhedgingisthateachnodeintheproxytree(i)receives
+messagecopiesfromdifferentsourcesand,(ii)processesthe
+earliestreceivedmessagecopyandforwardsthattochildren
+nodes. We run a Monte Carlo simulation of our hedging
+techniquetoestablishitseffectiveness.
+Third,forfairnessindatadelivery,Jasperfurtherbuildson
+VMhedgingtoshrinkthedeliverywindowforamulticast
+message.Weemployascalablemessage“hold-and-release”
+mechanismbasedontherecentCloudExsystem[12].Inthis
+mechanism, the clocks of the sender and all receivers are
+synchronizedusingahigh-accuracysoftwareclocksynchro-
+nization algorithm [11]. The sender attaches atimestamp
+calleda“deadline”witheachmessage.Receiversonlypro-
+cess the message at or after the associated deadline. This
+deadlineissettobeapointintimeinthefutureatwhichall
+receiversarelikelytohavereceivedthemessagewithhigh
+probability.Toestimatethesedeadlines,thesenderneeds
+tocontinuouslycollectone-waydelaymeasurementsfrom
+itselftoallthereceivers,andwedevelopascalabletechnique
+revieceR
+Triangular Inequality Violation Analysis
+0.0 0.580.12 0.0 0.460.62 0.0 0.01 0.1 0.2
+6
+0.12 0.0 2.480.01 0.0 0.0 0.0 0.06 0.0 0.0
+0.0 0.17 0.0 0.0 0.0 0.61 0.0 0.0 0.140.04 5
+0.0 0.060.04 0.0 0.240.42 0.0 0.0 0.810.28
+4
+0.07 0.0 0.02 1.1 0.0 0.0 0.030.23 0.0 0.0
+0.21 0.0 3.420.13 0.0 0.0 4.180.21 0.0 0.0 3
+0.0 0.020.09 0.0 0.47 0.3 0.0 0.070.130.96 2
+0.010.07 0.0 0.010.440.22 0.0 0.0 0.270.22
+0.12 0.0 0.020.28 0.0 0.0 0.0 6.57 0.0 0.0 1
+0.4 0.0 0.020.14 0.0 0.0 0.320.38 0.0 0.0
+0
+dnuof
+si
+noitaloiv
+qeni-irt
+a
+emit
+fo
+egatneceP
+Figure1:Violationsoftriangularinequalityforpathlatencies
+areexceptionallyrarewithinacloudregion.
+forcollectingsuchmeasurements,usingthemulticasttree
+inthereversedirectiontoaggregatemeasurementdatafrom
+allofthereceivers.
+WeevaluateJasperagainst(i)directunicastasabaseline,
+inwhichasenderdirectlysendsacopyofthemessageto
+eachreceiver,(ii)anexistingcloud-hostedfinancialexchange
+system,CloudEx[12],and(iii)acommercialcloudmulticast
+solutionprovidedbyAWS[38].Weshowthatwescaleto
+1000+ emulated multicast receivers and achieve better la-
+tencyandfairnessthanthebaselines.Weconductfurther
+experiments to show the benefits of each individual tech-
+nique:hedging,treestructures,andscalablefairdelivery.
+2 BACKGROUND
+2.1 MigratingFinancialExchangetothe
+Cloud:RequirementsandChallenges
+To meet their network performance requirements, finan-
+cial firms currently utilize co-location facilities to deploy
+theirfinancialexchangesystemsonhighlyengineeredin-
+frastructure.However,manyofthetechniquestheyemploy
+toachievethisintheon-premclustersarenotavailableto
+cloudtenants,makingithardtodeployascalableandhigh-
+performanceexchangesysteminthecloud.
+Lackofmulticastsupportinthecloud.Thestatusquocloud
+environmentdoesnotprovideswitchsupportformessage
+multicast.Asaresult,cloudsystemsimplementthemulti-
+castfunctionalitybydirectlyunicastingacopyofamulticast
+messagetoeachreceiver[10,12,15,16].Whilethemultiple-
+unicastapproachworkswithasmallnumberofreceivers,
+itdoesn’tscale,sincethemessagereplicationandtransmis-
+siondelayincreaseswitheachadditionalreceiver.Indeed,
+somecloudproviders,likeAWS,providetheirownpropri-
+etary multicast service (e.g., AWS Transit Gateways [38])
+totenants.Thisperformsbetterthandirectunicastbutcan
+2
+
+onlysupport≈100receivers(§8.1).Therefore,suchmulticast Our motivation. Because of the absence of TIV cases in a
+servicesgivenbythecloudproviderstillcannotsufficethe cloud region, searching for the best paths in the network
+demandoffinancialexchanges.TosupportmanyMPs,ex- (justaswhatALMdoes)nolongerbringssignificantbenefits.
+changeoperatorsneedmoreperformantmulticastservices Instead,weshiftourfocustowardsreducingthelatencies
+thattheycandeploybythemselvesascloudtenants. incurredathosts:werealizethatthetransmission(andrepli-
+Highlatencyvarianceinthecloud.Inthepubliccloud,the cation)delayofmultiplemessagecopiesbecomesthepri-
+latencybetweenvirtualmachines(VMs)tendstohavehigh marybottleneckasthenumberofmulticastreceiversgrows
+variabilityandispronetounpredictablelatencyspikes[16, (detailsin§4).Therefore,adesirableapproachtoimproving
+19, 26]. This makes it difficult to achieve the networking multicastperformanceinasingle-regioncloud shouldaim
+requirements of financial exchnages [16]. While on-prem toreducethedelaysincurredattheVMswhenasenderis
+clusterscanmitigateoravoidlatencyfluctuations(e.g.,us- multicastingmessagestomultiplereceivers.
+ingspecialhardware,andevenusingphysicalwiresofequal
+length),publiccloudtenantshaveverylimitedcontrolover 3 JASPERDESIGNGOALS
+howpacketsareroutedbetweenVMsandcannotengineer
+3.1 PrimaryGoals
+theunderlyingnetworkinthecloud.Asaresult,cloudten-
+antsdonothavethesameabilityason-premclusterusers Goal 1: Support a large number of receivers. Typicallyin
+totacklelatencyvariance. financialexchangesystems,oneormoreCentralExchange
+Servers(CESs)multicastmarketdatatoalargenumberof
+MPs, which may be in the order of 100s to 1000s [24, 30].
+2.2 CloudLatencyCharacterization
+Therefore,Jaspershouldbeabletoscaletohandlethousands
+Togainabetterunderstandingofthelatencycharacteristics
+ofreceiverswithoutcausingbottlenecksatthesender.
+inthepubliccloud,weconductasimplemeasurementstudy
+onAWSandGCP.Ourmeasurementstudyrevealstwomain
+Goal2:Achieveconsistentlylowlatency.Thisimpliestwo
+targetsforJasper:(1)theend-to-endlatencyofthemulticast
+findingsthatmotivatethedesignofJasper.
+shouldbelowsothattheMPsaretimelynotifiedofthefresh
+Inter-VMlatencyexhibitssignificanttemporalvariance.As
+informationofthemarket;(2)thetemporalvarianceofthe
+showninFigure2,theend-to-enddelaybetweenapairof
+latencyshouldbeminimalasthelatencyspikesmayhave
+communicatingVMsmayshowasignificantvariance.La-
+adverseimpactsonthesystem,e.g.,losttradeopportunities,
+tencyspikeswherethemedianlatencyincreasesbyacouple
+unfairnessindatadissemination.
+ofordersofmagnitudehavealsobeenreportedinthelitera-
+ture,butarerare[16,26].
+Goal3:Ensurefairdelivery.Fairdeliveryofmarketdatato
+MPsisanimportanttarget[12,15].Achievingfairdelivery
+Violations of triangular inequality are rare in the cloud.
+requiresthefinancialexchangesystemtomakeeveryMP
+Somenetworks,suchasthewide-areanetwork(WAN),may
+receivethesamemarketdatasimultaneously.Therefore,for
+exhibit frequent and persistent patterns of triangular in-
+each multicast message, Jasper needs to achieve minimal
+equalityviolations(TIV)[23],meaningthatthelatencybe-
+spatiallatencyvariance(i.e.,acrossreceivers)sothateach
+tween one VM and another may be improved by routing
+receivermayaccessthemessageatalmostthesametime.
+thetrafficthroughathirdVM.Itisthereforebeneficialto
+Besides the primary goals, high message throughput is
+findoptimal“detoured”networkpathsinWANswhencreat-
+alsoanobjectiveoffinancialexchangesystems.
+ingoverlaymulticasttreesforlow-latencycommunication
+[3,4,9,18,46].However,inthesingle-regioncloudsettings
+3.2 SystemOverview
+wetarget,thenetworkshowsdifferentcharacteristicsfrom
+WANsandTIVsrarelyoccur.Wehaverepeatedlyconducted Jasperborrowstheideaoftreesforscalingcommunication
+measurementexperimentsinbothAWSandGCP.Foreach toalargenumberofreceiverswhileretaininglowlatency[7,
+trial,wesetup10VMsandmeasuredtheinter-VMone-way 37](Figure3).InJasper,differentmarketdatastreams(e.g.,
+delayfortwoandahalfhours.Foreach1-secondwindow, differenttickersymbols)areassignedtoindependenttrees
+wefindTIVswherelatencyfromoneVMtotheothercould that might share common receivers—allowing us to scale
+havebeenimprovedbyroutingthroughanotherVM.2Our throughputviasharding(§7).Here,wefocusonasingletree,
+measurementstudyinbothAWS(Figure1)andGCP(Figure whereeachtreenodeonlyhasasmallnumberofchildren
+12inappendix)suggestveryfewTIVcasesexist.3 thattheyareresponsiblefordirectlysendingdatato.
+Tuningthetreestructure(§4):Thestructureofaproxytree
+(depth𝐷 andfan-out𝐹)istunedtominimizelatency.Exist-
+2Wemayover-countTIVsasweonlylookatthegranularityof1second.
+ingcloud-basedexchanges[12,15,16]implementmulticast
+3WelookforTIVswherethelatencybetweentwoVMsimprovesbyatleast
+10microsecondsbygoingthroughathirdVM. usingthedirectunicastapproach.Thismaybeconsidered
+3
+
+300
+250
+200
+150
+100
+50
+0 20 40 60 80 100 120
+Time (minutes)
+)sdnocesorcim(
+ycnetaL
+90th Percentile Latency For Each One Second Tumbling Window for a Pair of VMs
+Figure2:LatencybetweenapairofVMsmayshowsignificanttemporalvariance.
+Sender may use either of two interfaces:
+Sender - DPDK
+- eBPF/TC with Linux sockets
+Proxies use DPDK
+and send messages to children +
+0
+y
+er a set of nieces P0
+0
+P0
+1
+P0
+2
+a
+L
+Fanout and depth
+1
+a y
+er
+P0 1 P1 1 P2 1 P1 3 P1 4 P1 5 P1 6 P7 1 P8 1
+o
+d
+f
+e p
+p
+e
+ro
+n
+x
+d
+y
+s
+t
+o
+re
+n
+e
+# of
+L receivers
+2 All receiver VMs are equally divided among the last level of proxy VMs
+er
+a y Receivers may use either of two interfaces: DPDK or eBPF/XDP with Linux sockets
+L
+Figure3:Severalsuchtreesterminateonthesamereceivers.Tradingsymbolsareshardedacrossallthetrees.Inatree,each
+nodereceivesmessagesfrom2ormorevariedsources(notalledgesareshowninthediagram).Dottededgesrepresenthedging
+(§5),whichcaneffectivelylowerthelatencyvariance.
+aspecialcaseofatreewhere𝐷 is1and𝐹 is𝑁.Weshow rest.VMhedgingreducestheimpactoflatencyfluctuations,
+thatthereisvalueinincreasingthe𝐷 anddecreasingthe𝐹 yieldsmuchsmallerlatencyvariance,andnarrowsdownthe
+asthenumberofreceivers(𝑁)grows(Goal1).Weprovide windowoftimeinwhichallthemulticastreceiversreceive
+asimpleheuristicfortuning𝐷 and𝐹 whichprovidesgood amulticastmessage(Goal2andGoal3).
+performance.Wediscusshowamoresophisticatedmecha-
+Scalablesimultaneousdelivery(§6):Simultaneousdelivery
+nismfortuningdoesnotoutperformourproposedheuristic
+is achieved by a scalable message hold-and-release mech-
+becauseofthehighvariationinlatencyandperformanceof
+anism. This mechanism was first introduced in [12] and
+VMsinthepubliccloud.
+workseffectivelyforO(10)receivers.Ourscalableversionof
+VMhedging(§5):Forachievingconsistentlylowlatencyand thismechanismemploysthetreeinthereversedirectionto
+decreasingthelatencyvariancespatially,Jasperintroducesa collectandaggregatelatencymeasurementsrequiredforthe
+techniquecalledVMhedging,motivatedbyrequesthedging hold-and-releasemechanism.IncombinationwithVMhedg-
+[8,34,42].InVMhedging,eachVMintheproxytreereceives ingtoreducelatencyvariance,wecanachievesimultaneous
+messagesfromtwoormoredifferentsources(i.e.,parentand deliveryfor1000sofemulatedmulticastreceivers(Goal3).
+oneormoreaunts)wherethepathlengthsforallmessages
+Optimizationsforthroughput(§7):Weengineereachproxy
+are the same. A VM processes and forwards the message
+nodeinatreetoefficientlyperformthetaskofreceivinga
+copy to children that is received earliest and discards the
+message,replicatingit,andsendingittochildren.Weuse
+4
+
+300
+250
+200
+150
+100
+50
+0 10 20 30 40 50 60 70 80 90
+Receiver ID
+)su(
+DWO
+elitnecrep
+ht59
+(a)N=10 (b)N=100 (c)N=1000
+Direct Unicasts
+Tree D F OML D F OML D F OML
+1 10 66 1 100 351 2 32 282
+2 4 88 2 10 139 3 10 217
+3 5 141 4 6 226
+Table1:Medianvaluesofoverallmulticastlatency(OML)
+fordifferentdepth(𝐷)andfanout(𝐹),foragivennumberof
+receivers(𝑁).OMLforamulticastmessageisdefinedasthe
+maxofone-waydelaysfromthesendertoallreceivers.
+Figure 4: Without a tree, increasing number of receivers
+increasesmessagelatencyforlaterreceivers.
+areevenlydistributedamongtheproxiesinthelevelabove.
+Therefore, the last layer of proxies may have a different
+a multi-threaded DPDK implementation with Zero-Copy
+fan-outfactorthan𝐹.Forsupporting𝑁 receivers,thereare
+messagereplicationforhighthroughputandlowlatency.
+multiple<𝐷,𝐹>configurations.Someconfigurationshave
+Optimizationsforusability(§7):Jasperimplements2inter-
+lowertransmissiondelaybecauseoflower𝐹 buttheyalso
+faces(forsenderandreceivers):(1)aDPDKinterface,which
+haveextrahopsinthemessages’pathsbecauseofhigh𝐷and
+usesDPDKonthesenders,receivers,andproxiesand(2)a
+viceversa.Forminimizingtheend-to-endmulticastlatency,
+socketinterface,whichuseseBPF/TCatthesenderformes-
+weneedtofindthebest<𝐷,𝐹>configuration,given𝑁.
+sagereplication,andeBPF/XDPatthereceiversformessage
+Deciding D and F for multicast tree. To understand how
+de-duplication.Type(1)yieldshigherperformancethantype
+theend-to-endlatencyvariesas𝐷 and𝐹 grow,weconduct
+(2)butrequiresportingapplicationstouseDPDK.Type(2),
+aseriesofexperimentswithvariousnumbersofreceivers
+allowslegacysocket-basedapplicationstouseJasperwith-
+(𝑁 = 10,100,1000). Table 1 displays the latencies for dif-
+outchangingtheirnetworkAPIs.Fortype(2),weleverage
+ferentconfigurationsof<𝐷,𝐹>foragivennumber(𝑁)of
+eBPFtominimizethenumberofsystemcallswhenconduct-
+receivers.Weseethatthelatencyreachesaminimalpointat
+ingmulticastoperations.Therefore,whiletype(2)isnotas
+differentdepths𝐷 fordifferentvaluesof𝑁.Atasmallscale
+performantastype(1),itstillyieldshigherperformancethan
+(𝑁 = 10),increasing𝐷 doesnotbringlatencybenefits.As
+usingsocketswithouteBPFtomulticastthemessages.Our
+thescalegrowsfrom𝑁 =10to𝑁 =100,1000,thebenefits
+eBPFimplementationde-duplicatesmultiplehedgedpackets
+ofincreasing𝐷 whilereducing𝐹 growbecausethereduced
+withafixedlengthbuffer(asrequiredbyeBPF)andusing
+messagereplicationdelayandtransmissiondelayoutweigh
+thelimitedprogrammingprimitivesavailableinXDP.
+the added overhead of new hops in the path of messages.
+However,as𝐷goesbeyondacertainthreshold(e.g.,𝐷grows
+4 TREESFORSCALABLEAND
+largerthan3when𝑁 =1000),thelatencydoesnotimprove
+LOW-LATENCYMULTICAST andmayworsen.Basedonourexperiments,wefindfixing
+For1-to-𝑁 communicationinthepubliccloud,acommonly 𝐹 = 10 usually leads to a desirable𝐷 to generate a multi-
+usedtechniqueisthatasenderreplicatesthemessagesand casttreewithlowlatency.Weestablishourheuristicruleto
+sendsonecopytoeachreceiver.Whenasendertransmits constructthemulticasttreeasfollows:Given𝑁 receivers,
+multiple copies of a message back-to-back, the latency of wefix𝐹 = 10andthenderive𝐷 = [𝑙𝑜𝑔 10 𝑁] (roundtothe
+latermessagesincreasesduetothetransmissiondelayin- nearestinteger).Wealsotestedamoresophisticatedalterna-
+curred by the transmission of earlier messages. Figure 4 tivemechanismasdescribedin[41],anddidnotobservea
+showsthelatencyofmessagesexperiencedbydifferentre- significantperformanceboostcomparedtoourheuristic.
+ceiverswhensentusingunicastandwhenemployingaproxy Inourtesting,wefindthatvarianceinVMperformance
+tree(Figure3)tominimizetheeffectsoftransmissiondelays inthecloud[36]makesitchallengingtodifferentiatethe
+toachievelowerend-to-endlatency. “optimal”valuesof𝐷 and𝐹 fromvaluespickedusingthe
+Aproxytreestructuremaybedefinedby2factors:the aforementionedheuristic.Weobservethroughrepeatedex-
+depth𝐷 andthefan-outfactor𝐹.𝐷 indicatesthenumberof perimentationthatminorchangesin𝐷 and𝐹 donotshow
+hopsfromthesendertoeachreceiver.𝐹 indicatesthenumber a significant performance difference with high statistical
+ofmessagecopiesthatthesender/proxyneedstosend(via confidence.Soitissufficienttoselect𝐷 and𝐹 intheneigh-
+unicast)foreachmessagetoitsdownstreamnodes.Allthe borhoodoftheoptimalvalue,whichiswhyourheuristicis
+receivers are placed in the last layer of the tree, and they effective.Wefurtherfindthataunitincrementin𝐷 comes
+5
+
+attheaddedlatencyof30±10𝜇𝑠 andaunitincrementin𝐹 on the responsibility of hedging. Specifically, each proxy
+adds2.7±0.9𝜇𝑠 perlayer.4Atreeconstructedusinglinear node sends messages to the children of 𝐻 of its siblings
+modelsbasedontheseunitincrementsperformscomparably along with sending messages to children of its own. For
+tothetreeconstructedusingourheuristicofmaintaining𝐹 example,inFigure3,whenhedgingisnotenabled(i.e.,𝐻 =
+to10and𝐷 = [𝑙𝑜𝑔 10 𝑁]. 0),proxy5𝑃 3 1onlyreceivesmessagesfrom𝑃 1 0.Asaresult,𝑃 3 1
+maysufferfromhighlatencyif𝑃0orthepathfrom𝑃0to𝑃1
+1 1 3
+5 VMHEDGING encounterslatencyfluctuations.Byusinghedging,𝑃1 not
+3
+onlyreceivesmessagesfrom𝑃0,butalsoreceivesthesame
+5.1 HedgingDesign 1
+messagesfrom𝑃0(if𝐻 =1).Withhedging,therearemultiple
+AlthoughthetreestructureenablesJaspertoprovidescalable 0
+pathsfromthesendertoany𝑃𝑗 where 𝑗 >0,sothenegative
+multicast,thelatencyvariancebecomesmoresignificantand 𝑖
+impactoflatencyvariationscanbeeffectivelyreduced.This
+spikesoccurmorefrequentlyasthetreegrowslarger.This
+techniquedemonstratessignificantbenefitsthatweevaluate
+notonlyimpactsthelatencyofoursystembutalsoourability
+in§8.2.Italsodoesnotintroduceanysignificantbandwidth
+todelivermessagesfairly.It’sbeenwellestablishedthatthe
+bottlenecks,unlikethe𝐹 +𝐻 hedgingtechnique.Next,we
+publiccloudgenerallyhasmorevariablelatencythanon-
+present a random variable analysis to further understand
+premsolutions[33,45].Thisimpactisamplifiedinatree
+SiblingHedging.
+sincealatencyfluctuationinanynode(orpathtoanode)
+increasestheend-to-endlatencyofallthereceiverswhose
+5.2 HedgingAnalysis
+transmissionpathincludesthatnode.
+WhenVMhedgingisenabled,wemaymodelthelatency
+To combat latency variance, we develop a VM hedging
+experiencedbyareceiverasfollows.
+strategyinJasper:wealloweachproxytoreceivemultiple
+copiesofamessage(fromthehigherlevelofproxies),andthe
+WeusefunctionL(𝑎,𝑏)torepresentthelatencyfromnode
+proxyonlyprocessesthecopythatarrivesfirstandignores 𝑎 tonode𝑏.Weuse𝑆 torepresenttherootnode(i.e.,the
+duplicates.Todothis,wefirstdescribeastrawmandesign sender) in Figure 3, and 𝑃𝑗 to represent the node𝑖 (i.e, a
+𝑖
+thatleadsustoourfinaldesigndescribednext. proxyorareceiver)inLayer 𝑗.Then,givenanode𝑃𝑛,the
+𝑖
+end-to-end latency from the root sender to this node can
+Strawman hedging design: F+H Technique. Our original
+berecursivelydefinedasthefollowingrandomvariable(U
+hedgingdesignisthateachproxynodehas𝐻 extrachildren
+denotesuniformrandomdistribution):
+alongwithitsoriginal𝐹 children,where𝐻 isthehedging
+factor.Forexample,inamulticasttreewith𝐷 =3and𝐹 =3
+(cid:110) (cid:111)
+(Figure3),ifweconfigure𝐻 =1,wewilladd1hedgenode L(𝑆,𝑃𝑛) = min L(𝑆,𝑃𝑛−1 )+L(𝑃𝑛−1 ,𝑃𝑛)
+inLayer-0and3hedgenodesinLayer-1.Eachhedgenode
+𝑖
+0≤𝑗<𝐻
+(⌊𝑖/𝐹⌋−𝑗)%𝐻 (⌊𝑖/𝐹⌋−𝑗)%𝐻 𝑖
+willassistthe𝐹 originalproxiesatthesamelayeranddoes
+∀𝑖,𝑗 :L(𝑆,𝑃0) ∼UandL(𝑃𝑛−1,𝑃𝑛) ∼U
+nothavechildrenofitsown.Ahedgenodeassiststhese𝐹 𝑖 𝑖 𝑗
+proxiesbyforwardingamessagereceivedfromthehedge
+Achieving a low variance of L(𝑆,𝑃
+𝑖
+𝑛) would mean that
+the latency over time may not deviate much from the ex-
+node’sparenttothehedgenode’s𝐹2 nieces.Inthisway,a
+pectedvalue,helpinginachievingconsistentlatencyover
+proxynode(otherthantheonesinthetoplevel)willreceive
+time.ItalsoshowsthatdifferentVMs(atthesamelevelof
+1+𝐻 copiesofthesamemessage:1copyfromitsparent,
+thetree)inJaspermaynotexperiencelatencysignificantly
+andtheother𝐻 copiesfromthehedgenodesoftheprevious
+differentfromeachother,reducingthedifferencebetween
+layer.Empiricallywefindthatthistechniquesignificantly
+themaximumandminimumlatencyexperiencedamongall
+reduceslatencyvariance.However,ithasadistinctdrawback:
+thereceiversforamulticastmessage.
+Whereasaproxyonlyneedstomulticastmessagestothe𝐹
+nodes,thehedgenodeneedstomulticastthesamemessage
+WerunaMonteCarlosimulationofL(𝑆,𝑃
+𝑖
+𝑛)randomvari-
+ablewithdifferentvaluesof𝐻 and𝐷tounderstanditsbehav-
+copiesto𝐹2nodes,creatingathroughputbottleneckatthe
+ior.Thesimulationisrunfor100kiterations.Basedonthe
+hedgenode.Wetriedallowingahedgenodetoonlymulticast
+simulationresults(Figure5),wehavethreemaintakeaways.
+toasubsetof𝐹 niecesinsteadofall𝐹2 nieces.Whilethis
+alleviatesthethroughputbottleneck,wenolongerseethe
+NoHedging≈HighLatencyVariance:Withnohedg-
+ing, the depth of a tree and latency variance are directly
+samedecreaseinlatencyvariance.Therefore,webuildon
+thelessonstodesignanewhedgingscheme.
+correlated.Figure5aplotstheCDFforL(𝑆,𝑃
+𝑖
+𝑛) andshows
+meanvalue𝜇 andstandarddeviation𝜎 fordifferentconfigu-
+Final hedging design: SiblingHedging. Instead of adding
+rationsofthemulticasttree.As𝐷 growslarger,weseeboth
+extrahedgenodesinatree,weleteachproxynodealsotake
+𝜇 and𝜎 increasedistinctly,indicatingthatjustaproxytree
+4Usingourhigh-performanceimplementationonac5.2xlargeVMinAWS 5𝑃𝑗 represents𝑖-thproxyinLayer𝑗.
+𝑖
+6
+
+1.0
+0.8
+0.6
+0.4
+0.2
+0.0
+0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0
+Value
+FDC
+Hedging Analysis
+1.0
+0.8
+0.6
+H=0, D=1, =0.5, =0.3 0.4
+H=0, D=2, =1.0, =0.4
+H=0, D=3, =1.5, =0.5
+0.2
+H=0, D=4, =2.0, =0.6
+H=0, D=5, =2.5, =0.6
+0.0
+0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0
+Value
+(a)Withnohedging,thedepthofatree
+makesthelatencyanditsvarianceworse.
+FDC
+Hedging Analysis
+1.0
+0.8
+0.6
+H=4, D=1, =0.5, =0.3 0.4
+H=4, D=2, =0.5, =0.2
+H=4, D=3, =0.6, =0.2
+0.2
+H=4, D=4, =0.7, =0.2
+H=4, D=5, =0.7, =0.2
+0.0
+0.0 0.5 1.0 1.5 2.0 2.5 3.0 3.5 4.0
+Value
+(b)Hedginglimitstheimpactofdepthon
+thelatencyanditsvariance.
+FDC
+Hedging Analysis
+H=0, D=4, =2.0, =0.6
+H=1, D=4, =1.3, =0.4
+H=2, D=4, =0.9, =0.3
+H=3, D=4, =0.8, =0.2
+H=4, D=4, =0.7, =0.2
+(c) For a fixed depth, increasing H im-
+provesthelatencyanditsvariance.
+Figure5:AnalyzingVMHedging.AMonteCarlosimulationwith100kiterationswasused.
+(i.e.,nohedging)suffersfrommorelatencyvariancewhen varianceforeachreceiverovertime,andthespatiallatency
+thetreescalesup. varianceacrossreceiversiskeptlow.Beyondthis,weemploy
+Hedging≈LowLatencyVariance:Ourhedgingmakes ahold-and-releasemechanism(byusingsynchronizedclocks)
+the correlation between 𝐷 and 𝜎 become less significant. toeliminatetheresidualspatialvarianceattheendhosts
+InFigure5b,wecanseethelatencydistributionbecomes andenforcesimultaneousdeliveryacrossreceivers.Thehold-
+narrow(i.e.,reduced𝜎)as𝐻 growsfrom0tohighervalues. and-releasemechanismwasintroducedbyCloudEx[12]but
+LowOverallLatency&DiminishingReturnson𝐻:In itdoesnotscalewellandleadstohighend-to-endlatency
+Figure5c,wefix𝐷 andkeepincreasing𝐻.Figure5cshows (§8.3).Wedescribeamodifiedhold-and-releasemechanism
+thathedgingnotonlyreducesthelatencyvariance(i.e.,the thathelpsusscalefurther,whilemaintainingalowend-to-
+distributionbecomesnarrower),butitalsohelpstoreduce endmulticastlatency.
+theoveralllatency(i.e.,thedistributionmovesleftwards). Hold & Release mechanism. To implement the hold-and-
+However,as𝐻 growslarger,theincrementedperformance releasemechanism,Jasperleveragestheaccurateclocksyn-
+gainsdiminish,andmostperformanceimprovementisob- chronizationalgorithm,Huygens[11],tosynchronizethe
+tainedwhen𝐻 growsfrom0to1.Itshowsthatasmallvalue clocksamongthesenderandreceivers.Receiverskeeptrack
+of𝐻 (>0)isenoughtoreapthebenefitsofVMhedging.This oftheone-waydelay(OWD)ofthemessagesreceivedfrom
+isusefulbecauseasmall𝐻 savesbandwidth. the sender. Each receiver takes the 95th percentile of its
+OWD records at regular intervals and sends the results
+backtothesenderusinganall-reducemechanismexplained
+6 SCALABLESIMULTAENOUSDELIVERY
+later.ThesendercalculatesthemaximumoftheseOWDs
+Financialtradingneedstoensurethefairnessofthecompeti-
+called Global OWD for messages using the gathered sta-
+tion.Fairnessindatadelivery[12,15]meansthatthemarket
+tistics: OWD =max (OWD) where OWD is the OWD
+datafromtheexchangeservershouldbedeliveredtoevery G i i i
+estimatereportedbythe𝑖-thmulticastreceiver.
+MPatthesametimesothatanMPmaynotgainanadvan-
+Once an OWD has been calculated by the multicast
+tageovertheothersduringthecompetition.Whilethereare G
+sender, it attaches deadlines to all outgoing messages. A
+alsosomerecentworkstryingtoalterthedefinitionoffair-
+deadlineiscalculatedbyaddingOWD tothecurrenttimes-
+ness[16,25],thesevariantdefinitionsrequiremoreresearch G
+tampwhensendingamessage.Uponreceivingamessage,a
+beforetheyareconfidentlyadopted.Therefore,Jasperuses
+receiverdoesnotprocessituntilthecurrenttimeisequalto
+theoriginaldefinitionoffairnessemployedbyon-premises
+(orexceeds)themessage’sdeadline.Thismechanismleads
+financialexchanges.Inshort,inJasperthefairdeliveryof
+toalmostsimultaneousdelivery,moduloclocksyncerror.
+datameanssimultaneousdeliveryofmarketdatatoallthe
+In§10,wediscusspossiblesecuritymechanismstoensure
+multicastreceivers.
+thatareceiver(anMP)waitsuntilitsdeadlinetoprocessa
+Realizingperfectsimultaneousdatadeliverytomultiplere-
+message,whenit’sintheMP’sselfinterestnottowait.
+ceiversistheoreticallyunattainable[14].Nevertheless,Jasper
+triestoempiricallyminimizethespatial(i.e.,acrossreceivers) Deadlines all-reduce. In the design of Jasper’s hold-and-
+varianceofthelatencyofmessages.Ourhedgingdesign(§5)
+releasemechanism,allthereceivershavetosendestimates
+oftheOWDtheyexperiencebacktothesendersothatthe
+hascreatedfavorableconditionstominimizethespatialvari-
+ance.Byusinghedging,Jaspercanachieveconsistentlylow
+7
+
+sendercanestimatethedeadlinesforthesubsequentmes- 7.2 Usability
+sagestomulticast.Ifallthereceiverssendtheirestimated For the sake of high performance, Jasper implements the
+OWDdirectlytothesender,incastcongestionoccursatthe messageprocessinglogicbyfullyusingDPDK.However,we
+sender,leadingtoincreasedmessagedrops.6 Toavoidthe alsorealizethatmanylegacyapplicationsareprogrammed
+high volume of incast traffic, we reuse the multicast tree basedonthePOSIXsocketAPIs,andportingthemtothe
+toaggregatetheOWDestimatesinanall-reducemanner. DPDK-basedAPIsiscostlyandchallenging.Soweimple-
+Specifically,eachreceiverperiodicallysendsitsOWDesti- ment a second interface with UNIX sockets at the sender
+matetoitsparentproxy.Aseachproxyhasalimitednumber andreceivers.7 Tominimizetheperformancesacrifice,we
+of children, we do not risk in-cast congestion here. Each leverageeBPFtoreduceseveraloverheads.
+proxy(i)continuouslyreceivesestimatesfromitschildren; First,thesender,insteadofsending𝐹 messagestoLayer-0
+(ii)periodicallytakesthemaximumofallthereceivedesti- proxies,sendsonemessageusingaUNIXsocketwhichis
+mates,ignoringsomechildrenOWDsiftheyhavenotyet thencapturedbyaneBPF/TChook.Thehookreplicatesthe
+sentinanestimateand;(iii)andsendsthemaxvaluetoits messageusing𝑏𝑝𝑓_𝑐𝑙𝑜𝑛𝑒_𝑟𝑒𝑑𝑖𝑟𝑒𝑐𝑡()andsendsonecopyto
+parentproxy.Inthisway,thesenderattherootcalculates eachofthe𝐹 Layer-0proxies.Thiseliminatestheoverhead
+deadlinesformessagesbyonlyreceivingtheaggregatedesti- ofcreatingmessagecopiesintheuserspaceandsendingeach
+matesfromthefirstproxylayerinsteadofallthereceivers. copytothekernel.
+Second,receiversinstallaneBPF/XDPhookwhichmakes
+7 OPTIMIZATIONSFORHIGH surethattheearliestcopyofamulticastmessageisreceived
+THROUGHPUTANDUSABILITY and sent to the application. The later copies are dropped
+bythehook.Duetohedging,areceivergets𝐻 +1copies
+7.1 Throughput
+ofamulticastmessagewheretheearliestoneissupposed
+DecouplingDPDKTx/Rxprocessing:Weleveragethehigh-
+to be accepted. The XDP hook serves that purpose. This
+performancelocklessqueue[21]providedbyDPDKtode-
+optimizationkeepsduplicatemessagesfromtraversingthe
+couple the Tx/Rx processing logic. On each 8-core proxy
+kernelstackandgoingtouserspace.However,implementing
+VMinJasper,weallocateonecore(i.e.,onepollingthread)
+apacketde-duplicationmechanismischallenginginXDP
+forRxand6coresforTx.TheRxthreadkeepspollingthe
+asonlyfixed-lengthbuffersareallowedandseveralopera-
+virtual NIC to fetch the incoming messages and dispatch
+tions(e.g.,modulo(%))arenotpermitted.Sowedevisean
+eachmessagetooneTxthreadviathelocklessqueue,which
+algorithmthatworksundertheassumptionthatmessages
+continuestoreplicateandforwardthemessage.
+whicharesentbythesenderonesecondapartdonotget
+Minimizingpacketreplicationoverheads:WhenaTxthread re-ordered.Detailsofourde-duplicationimplementationare
+isreplicatingthemessage,insteadofcreating𝐹 packetswith describedinAppendixA.
+eachcontainingonecompletecopyofthemessage,weusea
+zero-copymessagereplicationtechnique.Foreachpacket, 8 EVALUATION
+weremovethefirstfewbytesthatcontainEthernetandIP
+Weanswerthefollowingquestions.
+headerandtheninvoke𝑟𝑡𝑒_𝑝𝑘𝑡𝑚𝑏𝑢𝑓_𝑐𝑙𝑜𝑛𝑒()APItomake
+(1) HowdoesJaspercomparetothedirectunicastsscheme
+severalshallowcopiesofthepacket,equaltothenumberof
+andAWSTransitGateway?§8.1
+downstreamnodesofaproxy.Weallocatesmallbuffersfor
+(2) HowdoesVMhedgingperform?(§8.2)
+newEthernetandIPheaders(fromDPDKmemorypools)
+(3) HoweffectivelydoesJasperachievesimultaneousdeliv-
+and attach each pair of these buffers to one shallow copy
+ery?HowdoesitcomparetoCloudEx?(§8.3)
+created previously. Then we configure the headers prop-
+(4) WhatistheimpactofJasperontradingalgorithms?(§8.4)
+erly(writingtheappropriatedestinationaddresses)anduse
+(5) Howscalable(i.e.,numberofreceivers)isJasper?(§8.5)
+𝑟𝑡𝑒_𝑒𝑡ℎ_𝑡𝑥_𝑏𝑢𝑟𝑠𝑡()APItosendthepacketsout.
+(6) HowmuchthroughputcanaJaspertreeprovide?(§8.6)
+Parallelizing multiple multicast trees: To further improve (7) Howdoesmulticastlatencychangeaseachcomponent
+thethroughput,weborrowtheshardingideausedbyCloudEx ofJasperisintroduced?(§8.7)
+[12].Sinceeachpieceofmarketdataisassociatedwithone OurexperimentsareperformedonAWSwithc5.2xlarge
+tradingsymbol(e.g.,$MSFT,$AAPL,$AMD),wecanemploy VMs.Unlessmentionedelsewhere,weuse100receiversand
+multipletreesinparalleltomulticastthemarketdataassoci- thesender’ssendingrateis5Kmulticastmessagespersecond.
+atedwithdifferentsymbols.Inthisway,Jasper’sthroughput WeonlyenableJasper’ssimultaneousdeliveryin§8.3-§8.5.
+scaleshorizontallybyaddingmoremulticasttrees. AlltheCDFspresentedinthissectionshowpercentilesinthe
+range[1,99].Eachexperimentcaseisrunfor150seconds.
+6Wemeasurethatmorethan20%ofthepacketsaredroppedwhen100
+receiversattempttosendOWDsbacktothesendersimultaneously. 7ProxiesbetweensenderandreceiversarestillimplementedwithDPDK.
+8
+
+100
+80
+60
+40
+20
+0
+200 300 400 500
+Overall Multicast Latency (microseconds)
+FDC
+receiverandtakethemaximumamongthese𝑁 latencyval-
+ues as the overall multicast latency (OML) for a message.
+Figure7acomparestheOMLCDFsunderdifferenthedging
+factors(𝐻 =0,1,2).𝐻 =0representsthecasewhenhedging
+isnotenabled.Comparedwith𝐻 =0,𝐻 =1yieldsdistinct
+latencyreductionastheCDFcurveisshiftedtotheleft.As
+weincrease𝐻 from1to2,thelatencyreductionbecomes
+AWS TG
+DU marginal.However,weshowlaterthatforalargernumber
+Jasper ofreceivers,setting𝐻 =2yieldsbetterresultsthan𝐻 =1.
+Reduced temporal latency variance. In Figure 7b, we cal-
+culate the median OML over a tumbling window of 5000
+Figure6:JasperoutperformsDU,andAWSTGintermsof messagestostudythetemporallatencyvarianceduringthe
+achievingalowerOML. multicast. Figure 7b shows Jasper with hedging (𝐻 = 1)
+exhibits lower latency variance compared with the non-
+hedgingscheme(𝐻 =0).
+Oneimportantlimitationofourexperimentsisthatwe Reduced spatial latency variance. Figure 7c compares the
+host 10 receivers per VM for 𝑁 = 1000 and 20 receivers CDFsofdeliverywindowsizeforJasperwithdifferenthedg-
+perVMfor𝑁 =5000.WearelimitedbyVMquotastotest ingfactors.Wecanseethathedgingsubstantiallyreducesthe
+ourhypothesesandexpecttoresolvethisinthefuture.This spatiallatencyvariance(i.e.,itshrinksthedeliverywindow
+leavesopenthepossibilitythatourresultsmightworsenif ofmulticastmessages).The99thpercentiledeliverywindow
+weuse1receiverperVMathigh𝑁. sizeis∼350µswithnohedging,butisreducedto∼150µs
+Belowarethecommondefinitionsusedintheevaluation: whenJasperuses𝐻 =1.However,as𝐻 growsfrom1to2,
+OML:Whenamessageismulticasttomultiplereceivers, thewindowsizereduction,althoughitstillexists(∼150µs
+theOverallMulticastLatency(OML)referstothelatency reducedto∼120µs),becomeslessdistinct.
+experiencedbythelastreceiverthatreceivesthemessage.
+ReducedOWDsforeachreceiver.Wefurtherinvestigatethe
+DeliveryWindow:Itiscalculatedasthedifferencebe-
+impactofhedgingontheOWDofeachreceiver.Todoso,we
+tweentheOWD(one-waydelay)experiencedbythereceiver
+needtodesignmorecontrolledexperimentstocomparethe
+whoreceivesthemessageearliestandtheOWDexperienced
+hedgingcaseandno-hedgingcase.Previouslywehaverun
+bythereceiverwhoreceivesthemessagelatest.
+multipleexperimentsforhedgingcasesandno-hedgingcases
+separately.However,welaterrealizethattheperformance
+8.1 Comparisonwithothertechniques variance(latencyfluctuations)issignificantacrossmultiple
+Weconsiderthefollowingbaselinesandcomparetheirmul- runs,leadingtoinconsistentresultsamongthemultipleruns
+ticastperformancewithJasper. forlowerpercentiles.Toeliminatethenoiseeffect,wedesign
+• DirectUnicast(DU):Whenconductingmulticast,the astrategytoenableustotesttwotechniques(hedgingand
+senderdirectlysendsacopyofamulticastmessagetoeach nohedging)atthesametimeonthesameVMs.Wemake
+receiver.Weuseio-uringtocreateastrongbaselineasit Jasperonlydohedgingforodd-numberedmessages.This
+reducesthelatencybyminimizingtheoverheadsofsyscalls. interleavesthehedgingexperimentwiththeno-hedgingex-
+• AWSTransitGateway(AWS-TG):AWS-TGisthemul- periment,sothattheOWDsamplesforbothhedgingand
+ticastapproachprovidedbyAWS[38].AWS-TGmakesthe no-hedgingcasesarecollectedfromthesameexperiment
+sendersendthemessagetoagatewaywhichthenreplicates setting. In this way, we are able to obtain consistent and
+andsendsonecopytoeachreceiver.ThedetailsofAWS-TG’s reproducibleresultsacrossmultipleruns.Weseethathedg-
+implementationareproprietary.However,ourmeasurement ing does not greatly reduce the median OWD (Figure 8a)
+showsthatAWS-TGcansupportatmost100receiversper experiencedbyeachreceiverwhichalsoexplainstherea-
+multicastgroup. sonfortheinconsistentresultsbeforeweadoptinterleaving.
+Figure6showsthatJasperdistinctlyoutperformsDUand However,ourhedgingtechniquecansubstantiallyreduce
+AWS-TG.ThemedianlatencyforJasperis 129𝜇𝑠 whereitis theheavytailoflatency.AsshowninFigure8b,thehedging
+228𝜇𝑠 forAWSTGand 254𝜇𝑠 forDU. significantlyreducesthe99thpercentileOWDcomparedto
+nohedgingonatree.
+8.2 HedgingEvaluation
+Reducedoverallmulticastlatency.Foreverymulticastmes-
+sagefromthesender,werecordmessagelatencyforevery
+9
+
+100
+80
+60
+40
+20
+0
+150 200 250 300 350 400
+Latency (microseconds)
+FDC
+150
+145
+140
+Jasper, H = 0
+Jasper, H = 1 135 Jasper, H = 2
+130
+0 25 50 75 100 125 150
+Time (seconds)
+(a)Hedgingreducesoverallmulticastla-
+tency(OML)
+s1
+fo
+wodniw
+gnilbmut
+a
+revo
+)su(
+LMO
+100
+80
+Jasper, H = 0 60
+Jasper, H = 1
+Jasper, H = 2 40
+20
+0
+50 100 150 200 250 300 350
+Delivery Window Size(microseconds)
+(b)HedgingshowsconsistentlylowOML
+FDC
+Jasper, H = 0 Jasper, H = 1
+Jasper, H = 2
+(c)Hedgingreducesdeliverywindowsize
+Figure7:EvaluatingVMHedging
+120
+110
+100
+90
+80
+70
+60
+0 10 20 30 40 50 60 70 80 90
+Receiver ID
+)su(
+DWO
+elitnecrep
+ht05
+300
+No Hedging, Tree
+Hedging, Tree
+250
+200
+150
+100
+0 10 20 30 40 50 60 70 80 90
+Receiver ID
+(a)50thpercentileOWDperreceiverdoesnot
+improvewithhedging
+)su(
+DWO
+elitnecrep
+ht99
+No Hedging, Tree 100
+Hedging, Tree
+80
+60
+40
+20
+0
+100 200 300 400 500
+Overall Multicast Latency (microseconds)
+(b) 99th percentile OWD per receiver im-
+provessignificantlywithhedging
+Figure8:SpatialOWDInJasper
+FDC
+100 Receivers
+1K Receivers
+5.8K Receivers
+Figure9:Jasperscalestoalargenumber
+ofreceiverswhilemaintainingamedian
+OMLoflessthan350𝜇𝑠
+100
+80
+60
+40
+20
+0
+200 0 200 400 600 800 1000 1200
+Delivery Window Size(microseconds)
+FDC
+100
+80
+60
+40
+Jasper, H=2
+20
+Jasper w/o hedging
+CloudEx
+0
+0 200 400 600 800 1000
+Overall Multicast Latency (microseconds)
+(a)Jasperachievesasubstantiallynarrow
+messagedeliverywindowsize
+FDC
+100
+80
+60
+40
+Jasper, H=2
+20
+Jasper w/o hedging
+CloudEx
+0
+0 200 400 600 800 1000
+Mean Message Holding Duration (microseconds)
+(b)CloudExandJasperw/ohedgingshows
+highOML
+FDC
+Jasper, H=2
+Jasper w/o hedging
+CloudEx
+(c)Jasperrequiresalowmessageholding
+durationcomparedtoCloudEx
+Figure10:EvaluatingMulticastFairnessi.e.,JasperwithHold&Release
+8.3 SimultaneousDelivery negligible.WecomparewithCloudEx[12]thatusesasim-
+Fairness of data delivery among the market participants ilarhold-and-releasemechanismbutdoesnotuseatreeor
+(MPs)iscrucialforHFTs.Weadoptthesamefairnessdef- hedging. With the help of CloudEx authors, we faithfully
+initionasusedbyon-premfinancialexchanges:everyMP implement a DPDK-based version of CloudEx that yields
+shouldreceiveamulticastmessageatnearlythesametime. higherperformance.
+In other words, the delivery window size of a message is
+10
+
+Close to ideal fairness. Figure 10a shows that Jasper can 8.5 SupportingLargeNumberofReceivers
+achieveadeliverywindowsize(DWS)of0atveryhighper- In contrast to the previous multicast solutions that only
+centiles.Withouthedging,theDWSbecomeslarger.CloudEx work with𝑂(10) receivers (e.g., [15, 16, 38]), Jasper aims
+alsoachievesfairness,butatthecostofhighend-to-endla- toimplementamorescalablemulticastservicewhichcan
+tencyasweshownext. support𝑂(1000)receivers.Figure9plotsJasper’smulticast
+Effectoffairnessonlatency.Figure10bshowsthattheover- latencyfor100receivers,1Kreceivers,and≈5Kreceivers.
+allOWDincreasessignificantlyifnohedgingisemployed Becauseofthetreestructure,Jaspercansupportmulticast
+whileusingthehold-and-releasemechanism.Thatisbecause tothousandsofreceivers.Besides,theVMhedgingenables
+thecalculateddeadlinesarefarintothefutureinorderto Jaspertokeepagracefulgrowthoflatencyasthenumberof
+cover the high spatialvariance of latency when𝐻 = 0. It receiversisincreasedbyanorderofmagnitude.
+leadstohighholdingdurationateachreceiverbeforemes-
+sagesarereleasedtotheapplication.CloudExalsoshows H=1 H=2
+highOMLs,worsethanJasperwithorwithouthedging,es- N DWS(𝜇𝑠) P(F)(%) DWS(𝜇𝑠) P(F)(%)
+peciallyat≤80thpercentile. 100 0 92 0 92
+Requiredholdingdurationforfairness.Whenamulticast 5000 8 36 0 86
+receiverreceivesamessagebeforethedeadline,itholdsthe Table3:JasperachievesalowmedianDeliveryWindow
+messageuntilthedeadlinebeforeprocessingit.Figure10c Size(DWS)andahighprobabilityofperfectfairness
+showsthemeanholdingdurationrequiredbyeachreceiver (P(F)).AlowDWSandhighP(F)arebetter.
+VMforachievingfairdelivery.Jasperwithhedgingleadsto
+averylowholdingduration(∼60𝜇𝑠)whileJasperwithno
+hedgingandCloudExneedsmoreholdingdurationwhichin Fairness for an increasing number of receivers. Table 3
+turnleadstohighmulticastlatencyaswediscussedearlier. showsthatJasperachievesaverylowdeliverywindowsize
+(DWS)evenwith5000receivers.ADWSof𝑥 𝜇𝑠denotesthat
+8.4 FairnessImpactonFinancialTrading everyreceivergetsthemessagewithin𝑥 𝜇𝑠 ofeachother.
+Toillustratetheimpactoffairnessonfinancialtradingand Theprobabilityofperfectfairnessisalsoshowninthetable.
+furtherdemonstratethebenefitofJasperinpreservingfair- PerfectfairnesstranslatestoDWSbeing0.Theprobability
+ness,webuildandrunaprototypefinancialexchangeappli- offairness(P(F))iscalculatedasthen-thpercentileatwhich
+cationatopJasper.Weuse100MPsasmulticastreceivers theDWSis0inaCDF.Weachieveafairnessprobabilityof
+butonly4receivers,i.e.,thefirst2andthelast2outofthe 86%for5000receiverswhenusingthehedgingfactorof2.
+100 MPs, actively take part in trading. We make the MPs Wenotethatatahighnumberofreceivers,𝐻 =1performed
+usethesametradingalgorithmandanalyzetheirportfolios poorly.Werecommendusing𝐻 =2forany𝑁 ≤ 5000.
+afterafewroundsoftrades.Furtherdetailofthissample
+applicationisincludedinAppendixC.Ingeneral,thefair 8.6 JasperThroughput
+delivery of market data would lead to all the participants InourcurrentimplementationofJasper,asinglemulticast
+(P1-P4)tohaveasimilarportfolioafterthetrading,while tree can support the rate of 35𝐾 multicast messages per
+theunfairdeliveryofdatawouldshowdifferingportfolios second(MPS)whenusing𝐻 =2and𝑁 =100.Beyondthis,
+(becausesomeMPsgainanadvantageovertheothersinthe westartseeingahighpacketdroprate(anincreaseto0.2%
+trading).Table2displaystheresultswithdifferentmulticast fromthenormalpacketdroprateof≈0%).At35KMPSwith
+solutionswhereJasperyieldsalmostidealresults. 𝐻 =2,eachproxysendsout1.05millionpacketspersecond.
+Whilewearenotexhaustingtheegressbandwidthatthis
+rate,wesuspectthattheriseinpackeddropratemightbe
+P1 P2 P3 P4
+becauseoflimitsenforcedbythecloudprovider[13].We
+Ideal 25% 25% 25% 25%
+leavefurtherinvestigationasfuturework.At35KMPS,we
+Jasper 25% 24.97% 24.66% 25.36%
+achieve a probability for perfect fairness of 96% with 100
+DU 49.79% 50.21% 0% 0%
+receivers.
+Tree 56.95% 42.39% 0.40% 0.25%
+Table 2: Share of overall profit earned by each of 8.7 LatencyImpactfromDifferent
+thefourparticipantsinasampletradingapplication.
+ComponentsofJasper
+Jasperachievesclosesttoidealperformance.
+We study OML when each Jasper component is used i.e.,
+startingfromDUtousingatree,andthenintroducinghedg-
+ingintothetree,andfinallyenablingsimultaneousdelivery
+11
+
+100
+80
+60
+40
+20
+0
+100 150 200 250 300 350 400 450
+Latency (microseconds)
+FDC
+DBO[16],FBA[5],andLibra[25],proposetouseamodified
+definition of fairness in financial trading, which requires
+moreresearchbeforesuchdefinitionsmaybeadopted.
+10 DISCUSSIONANDFUTUREWORKS
+DU Tree Security implications of hold-and-release mechanism. To
+Tree + Hedging preservefairness,Jasper’shold-and-release mechanismre-
+Tree + Hedging quiresthereceiverstoholdthemessageuntilthemessage’s
++ Fairness
+deadline.Suchadesignmayraisesecurityconcerns:thema-
+liciousreceivers(MPs)mayreleasethemessageearlierthan
+thedeadlinetocreateunfairadvantagestosomeMPs.
+Figure11:ImpactonmulticastlatencyaseachJaspercom- Totacklethisproblem,inJasperweassumeallthereceiver
+ponentisintroduced VMsareowned/controlledbythefinancialexchangeinstead
+ofMPs.MPsareonlygivencontainerstoruntheirtrading
+for fairness. Figure 11 shows how the latency is reduced
+programsinsidethereceiverVMswithcontrollednetwork
+when introducing different Jasper components except for
+access.Asaresult,Jasper’ssecurityreliesonthecontainer’s
+the final step of enforcing fairness. In the final step, the
+isolationguarantee,whichhasbeenwellstudiedintherecent
+hold-and-releasemechanismisenabledtopreservefairness,
+literature[2,17,22].Weplantofurtheranalyzeandevaluate
+whichincreasesthelatencybyamarginalamounttomake
+oursecurityassumptionsinthefuture.
+thedeliverywindowsmall.
+ReuseJasper’smulticasttreeforordersubmission.Atypi-
+calfinancialexchangeincludestwoprotocols,e.g.,ITCHand
+9 RELATEDWORK
+OUCH[43].ITCHcorrespondstothemulticastofmarket
+Multicast:Priorworksonmulticast[3,20,27,32,35]mainly datafromCEStoMPs,whereasOUCHisrelatedtothetrade
+focusonfindingoptimalpathsinanetwork(oroverlaymesh) ordersubmissionsfromMPstoCES.Jasper’smulticastser-
+usingcostmodelsfornetworklinksthatcapturelinkband- vicehelpstoimplementhigh-performanceITCHprotocol,
+widthorlatencycharacteristics.Bycontrast,Jasperfocuses andwehavenotconsideredoptimizingOUCHwithJasper
+onminimizingthedelaysincurredathostswhiletransmitting inthispaper.WebelieveJasper’smulticasttreestructurecan
+multiplemessagecopies.Inasinglecloudregion,triangle alsobeleveragedtoachievehighthroughputfortheOUCH
+inequalityviolationsoflatencyrarelyoccur,sofindingthe protocol:WhenalargenumberofMPsaresubmittingorders
+bestpathinameshofVMsisn’tveryhelpful(§2.2). concurrently,theincasttrafficcanleadtothebottleneckat
+Collectivecommunication:Collectivecommunication[47– theCES.Tosolvethis,thefinancialexchangecanemploy
+49]makesuseofoverlaytrees.However,thesesystemsspan theproxiesinJaspertoaggregatetheincomingordersina
+alimitednumberofreceivers,usuallylessthan100.Forin- hierarchicalway,thusalleviatingtheburdenofCES.Besides,
+stance,Hoplite[49]presentsatree-basedtopologyforband- weexpectJaspercanalsoreducethelatencyvarianceinthe
+widthoptimizationandresultsfor𝑂(10) nodes.Although OUCHdirectionsoastoimprovethefairnessamongMPs
+Jasper also aims to achieve high throughput by judicious duringordersubmission(i.e.,theinboundfairnessdefinedby
+useofegressbandwidth,ourprimarygoalsrevolvearound CloudEx[12]).Weleaveitasourfutureworktostudyusing
+latency(partlybecausemessagesizesaresmall)anditsvari- JaspertoimproveOUCHprotocolofthefinancialexchange.
+ance and involve 𝑂(1000) nodes. Further, Jasper has fair
+deliveryasaprimarygoalwhichisnotaconcernforeither 11 CONCLUSION
+collectivecommunicationortheexistingmulticastliterature. The migration of financial exchanges to the public cloud
+Fairdelivery:CloudEx[12]introducesthehold-and-release imposesseveralnetworkingchallenges.Thispaperpresents
+mechanismforfairnessforfinancialexchangesrunningin Jasper,acloud-nativemulticastservicetoworkforfinancial
+thecloud.However,CloudExfailstoscaleto1000sorevento exchangesinthecloudenvironment.Jaspercanachievelow
+100sofmarketparticipantsbecausetheoveralllatencyandla- latencyandfairdatadeliverywhenmulticastingtoalarge
+tencyvariancebuilduprapidlywhentheCESdirectlysends number(1000s)ofemulatedreceivers.Theperformanceof
+themarketdatatoalltheMPs.Octopus[15]implementsa Jaspercomesfromthreemaincomponents:(i)aproxytree
+similarapproachwithSmartNICstoachievefairdeliverybut tominimizereplicationandtransmissiondelayofmultiple
+hasonlybeenshowntoscaletolessthan10receivers.Jasper copiesofthemulticastmessage,(ii)aVMhedgingtechnique
+scalesto1000sofemulatedreceiverswhilemaintainingalow toreducethelatencyvarianceandnarrowdownthewindow
+end-to-endlatency.Besides,somerecentliterature,including inwhicheachMPreceivesthemessagecopyofamulticast
+12
+
+message and, (iii) a message hold-and-release mechanism [13] GitHub.[n.d.]. PerformanceintermsofPPS. https://github.com/
+wheredeadlinesareattachedtomessagesandreceiversonly amzn/amzn-drivers/issues/68.
+processesthemessagesatorafterthedeadlinesforfairness. [14] Piotr J. Gmytrasiewicz and Edmund H. Durfee. 1992. Decision-
+theoreticrecursivemodelingandthecoordinatedattackproblem.In
+Thisworkdoesnotraiseanyethicalissues.
+ProceedingsoftheFirstInternationalConferenceonArtificialIntelligence
+PlanningSystems(CollegePark,Maryland,USA).MorganKaufmann
+REFERENCES PublishersInc.,SanFrancisco,CA,USA,88–95.
+[1] [n.d.].MatchingOrdersDefinition.https://www.investopedia.com/ [15] JunzhiGong,YuliangLi,DevdeepRay,KKYap,andNanditaDukkipati.
+terms/m/matchingorders.asp. Accessed:2021-02-02. 2024. Octopus: A Fair Packet Delivery Service. arXiv preprint
+[2] Alexandru Agache, Marc Brooker, Alexandra Iordache, Anthony arXiv:2401.08126(2024).
+Liguori,RolfNeugebauer,PhilPiwonka,andDiana-MariaPopa.2020. [16] EashanGupta,PrateeshGoyal,IliasMarinos,ChenxingyuZhao,Rad-
+Firecracker:Lightweightvirtualizationforserverlessapplications.In hikaMittal,andRanveerChandra.2023. DBO:FairnessforCloud-
+17thUSENIXsymposiumonnetworkedsystemsdesignandimplementa-
+HostedFinancialExchanges.InProceedingsoftheACMSIGCOMM
+tion(NSDI20).419–434. 2023Conference(NewYork,NY,USA)(ACMSIGCOMM’23).Asso-
+[3] SumanBanerjee,BobbyBhattacharjee,andChristopherKommareddy. ciation for Computing Machinery, New York, NY, USA, 550–563.
+2002. Scalable application layer multicast. SIGCOMM Comput. https://doi.org/10.1145/3603269.3604871
+Commun.Rev.32,4(aug2002),205–217. https://doi.org/10.1145/ [17] ThegVisorAuthors.[n.d.].gVisor:TheContainerSecurityPlatform.
+964725.633045 https://gvisor.dev/. Accessed:2023-01-18.
+[4] S.Banerjee,C.Kommareddy,K.Kar,B.Bhattacharjee,andS.Khuller. [18] MichaelT.HelmickandFredS.Annexstein.2007. Depth-Latency
+2003.Constructionofanefficientoverlaymulticastinfrastructurefor TradeoffsinMulticastTreeAlgorithms.In21stInternationalConference
+real-timeapplications.InIEEEINFOCOM2003.Twenty-secondAnnual onAdvancedInformationNetworkingandApplications(AINA’07).555–
+564. https://doi.org/10.1109/AINA.2007.52
+JointConferenceoftheIEEEComputerandCommunicationsSocieties
+(IEEECat.No.03CH37428),Vol.2.1521–1531vol.2. https://doi.org/ [19] OwenHilyard,BochengCui,MarielleWebster,AbishekBangalore
+10.1109/INFCOM.2003.1208987 Muralikrishna,andAlekseyCharapko.2023.CloudyForecast:How
+[5] Eric Budish, Peter Cramton, and John Shim. 2015. The PredictableisCommunicationLatencyintheCloud?arXivpreprint
+High-Frequency Trading Arms Race: Frequent Batch Auc- arXiv:2309.13169(2023).
+tions as a Market Design Response *. The Quarterly Journal [20] YanghuaChu,S.G.Rao,S.Seshan,andHuiZhang.2002.Acaseforend
+of Economics 130, 4 (07 2015), 1547–1621. https://doi.org/ systemmulticast.IEEEJournalonSelectedAreasinCommunications
+10.1093/qje/qjv027 arXiv:https://academic.oup.com/qje/article- 20,8(2002),1456–1471. https://doi.org/10.1109/JSAC.2002.803066
+pdf/130/4/1547/30637414/qjv027.pdf [21] Intel. [n.d.]. DPDK Programmer’s Guide: Ring Library. https:
+[6] SaraCastellanos.[n.d.]. NasdaqRampsUpCloudMove. https:// //doc.dpdk.org/guides/prog_guide/ring_lib.html. Accessed:2024-01-
+www.wsj.com/articles/nasdaq-ramps-up-cloud-move-11600206624. 31.
+Accessed:2024-01-31. [22] Intel James E Chamings. [n.d.]. Intel Clear Containers.
+[7] TatsuhiroChiba,ToshioEndo,andSatoshiMatsuoka.2007. High- https://www.intel.com/content/www/us/en/developer/articles/
+PerformanceMPIBroadcastAlgorithmforGridEnvironmentsUti- technical/intel-clear-containers-1-the-container-landscape.html.
+lizing Multi-lane NICs. In Seventh IEEE International Symposium Accessed:2023-01-18.
+onClusterComputingandtheGrid(CCGrid’07).487–494. https: [23] CristianLumezanu,RandyBaden,NeilSpring,andBobbyBhattachar-
+//doi.org/10.1109/CCGRID.2007.59 jee. 2009. Triangle inequality variations in the internet. In Pro-
+[8] JeffreyDeanandLuizAndréBarroso.2013.TheTailatScale.Commun. ceedingsofthe9thACMSIGCOMMConferenceonInternetMeasure-
+ACM56(2013),74–80. http://cacm.acm.org/magazines/2013/2/160173- ment(Chicago,Illinois,USA)(IMC’09).AssociationforComputing
+the-tail-at-scale/fulltext Machinery,NewYork,NY,USA,177–183. https://doi.org/10.1145/
+[9] ArijitGanguly,P.OscarBoykin,andRenatoFigueiredo.2010.Tech- 1644893.1644914
+niquesforlow-latencyproxyselectioninwide-areaP2Pnetworks.In [24] DonaldMacKenzie.2021.Tradingatthespeedoflight:Howultrafast
+2010IEEEInternationalSymposiumonParallel&DistributedProcessing,
+algorithmsaretransformingfinancialmarkets. PrincetonUniversity
+WorkshopsandPhdForum(IPDPSW).1–8. https://doi.org/10.1109/ Press.
+IPDPSW.2010.5470939 [25] Vasilios Mavroudis and Hayden Melton. 2019. Libra: Fair Order-
+[10] JinkunGeng,AnirudhSivaraman,BalajiPrabhakar,andMendelRosen- MatchingforElectronicFinancialExchanges.arXiv:1910.00321[cs.CR]
+blum.2022.Nezha:DeployableandHigh-PerformanceConsensusUs- [26] RadhikaMittal,VinhTheLam,NanditaDukkipati,EmilyBlem,Has-
+ingSynchronizedClocks.Proc.VLDBEndow.16,4(dec2022),629–642. sanWassel,MoniaGhobadi,AminVahdat,YaogongWang,David
+https://doi.org/10.14778/3574245.3574250 Wetherall,andDavidZats.2015.TIMELY:RTT-basedCongestionCon-
+[11] YilongGeng,ShiyuLiu,ZiYin,AshishNaik,BalajiPrabhakar,Mendel trolfortheDatacenter(SIGCOMM’15).AssociationforComputing
+Rosenblum,andAminVahdat.2018. ExploitingaNaturalNetwork Machinery,NewYork,NY,USA,537–550. https://doi.org/10.1145/
+EffectforScalable,Fine-grainedClockSynchronization.InProceed- 2785956.2787510
+[27] Kianoosh Mokhtarian and Hans-Arno Jacobsen. 2015. Minimum-
+ingsofthe15thUSENIXConferenceonNetworkedSystemsDesignand
+Implementation(Renton,WA,USA)(NSDI’18).USENIXAssociation, DelayMulticastAlgorithmsforMeshOverlays. IEEE/ACMTrans-
+Berkeley,CA,USA,81–94. actionsonNetworking23,3(2015),973–986. https://doi.org/10.1109/
+[12] AhmadGhalayini,JinkunGeng,VighneshSachidananda,VinaySriram, TNET.2014.2310735
+YilongGeng,BalajiPrabhakar,MendelRosenblum,andAnirudhSivara- [28] NASDAQ. [n.d.]. Nasdaq TotalView-ITCH 5.0. https:
+man.2021.CloudEx:AFair-AccessFinancialExchangeintheCloud. //www.nasdaqtrader.com/content/technicalsupport/specifications/
+InProceedingsoftheWorkshoponHotTopicsinOperatingSystems(Ann dataproducts/NQTVITCHSpecification.pdf. Accessed:2024-02-02.
+Arbor,Michigan)(HotOS’21).AssociationforComputingMachinery, [29] Nasdaq.com.[n.d.].NasdaqandAWSPartnertoTransformCapital
+NewYork,NY,USA,96–103. https://doi.org/10.1145/3458336.3465278 Markets. https://www.nasdaq.com/press-release/nasdaq-and-aws-
+13
+
+partner-to-transform-capital-markets-2021-12-01. Accessed:2024- [44] KeithWinstein,AnirudhSivaraman,andHariBalakrishnan.2013.
+01-26. StochasticForecastsAchieveHighThroughputandLowDelayover
+[30] Brian Nigito. [n.d.]. Multicast and the Markets. https:// CellularNetworks.In10thUSENIXSymposiumonNetworkedSystems
+signalsandthreads.com/multicast-and-the-markets. Accessed:2024- DesignandImplementation(NSDI13).USENIXAssociation,Lombard,
+01-30. IL,459–471. https://www.usenix.org/conference/nsdi13/technical-
+[31] AlexanderOsipovich.[n.d.]. GoogleInvests1BillioninExchange sessions/presentation/winstein
+Giant CME, Strikes Cloud Deal. https://www.wsj.com/articles/ [45] YunjingXu,ZacharyMusgrave,BrianNoble,andMichaelBailey.2013.
+google-invests-1-billion-in-exchange-giant-cme-strikes-cloud-deal- Bobtail:AvoidingLongTailsintheCloud.In10thUSENIXSympo-
+11636029900. Accessed:2021-02-02. sium on Networked Systems Design and Implementation (NSDI 13).
+[32] M. Parsa, Qing Zhu, and J.J. Garcia-Luna-Aceves. 1998. An iter- USENIXAssociation,Lombard,IL,329–341. https://www.usenix.org/
+ative algorithm for delay-constrained minimum-cost multicasting. conference/nsdi13/technical-sessions/presentation/xu_yunjing
+IEEE/ACMTransactionsonNetworking6,4(1998),461–474. https: [46] JianjunZhang,LingLiu,LakshmishRamaswamy,andCaltonPu.2008.
+//doi.org/10.1109/90.720901 PeerCast:Churn-resilientendsystemmulticastonheterogeneous
+[33] MiaPrimorac,KaterinaArgyraki,andEdouardBugnion.2021.Whento overlaynetworks.JournalofNetworkandComputerApplications31,4
+HedgeinInteractiveServices.In18thUSENIXSymposiumonNetworked (2008),821–850. https://doi.org/10.1016/j.jnca.2007.05.001
+SystemsDesignandImplementation(NSDI21).USENIXAssociation, [47] Liangyu Zhao and Arvind Krishnamurthy. 2023. Bandwidth
+373–387. https://www.usenix.org/conference/nsdi21/presentation/ Optimal Pipeline Schedule for Collective Communication.
+primorac arXiv:2305.18461[cs.NI]
+[34] MiaPrimorac,KaterinaArgyraki,andEdouardBugnion.2021.Whento [48] LiangyuZhao,SiddharthPal,TapanChugh,WeiyangWang,Jason
+HedgeinInteractiveServices.In18thUSENIXSymposiumonNetworked Fantl,PrithwishBasu,JoudKhoury,andArvindKrishnamurthy.2023.
+SystemsDesignandImplementation(NSDI21).USENIXAssociation, EfficientDirect-ConnectTopologiesforCollectiveCommunications.
+373–387. https://www.usenix.org/conference/nsdi21/presentation/ arXiv:2202.03356[cs.NI]
+primorac [49] SiyuanZhuang,ZhuohanLi,DanyangZhuo,StephanieWang,Eric
+[35] G.N.RouskasandI.Baldine.1997.Multicastroutingwithend-to-end Liang,RobertNishihara,PhilippMoritz,andIonStoica.2021. Ho-
+delayanddelayvariationconstraints.IEEEJournalonSelectedAreas plite:EfficientandFault-TolerantCollectiveCommunicationforTask-
+inCommunications15,3(1997),346–356. https://doi.org/10.1109/ Based Distributed Systems. In Proceedings of the 2021 ACM SIG-
+49.564133 COMM 2021 Conference (Virtual Event, USA) (SIGCOMM ’21). As-
+[36] Vighnesh Sachidananda. [n.d.]. LemonDrop. https:// sociationforComputingMachinery,NewYork,NY,USA,641–656.
+stacks.stanford.edu/file/druid:xq718qd4043/Vig_thesis_submission- https://doi.org/10.1145/3452296.3472897
+augmented.pdf. Accessed:2024-01-30.
+[37] PeterSanders,JochenSpeck,andJesperLarssonTräff.2009. Two-
+tree algorithms for full bandwidth broadcast, reduction and scan.
+Parallel Comput. 35, 12 (2009), 581–594. https://doi.org/10.1016/
+j.parco.2009.09.001Selectedpapersfromthe14thEuropeanPVM/MPI
+UsersGroupMeeting. A APPENDIX:DE-DUPLICATION
+[38] AmazonWebServices.[n.d.].Multicastontransitgateways.https://
+IMPLEMENTATIONWITH
+docs.aws.amazon.com/vpc/latest/tgw/tgw-multicast-overview.html.
+[39] MuhammadShahbaz,LalithSuresh,JenniferRexford,NickFeamster, SOCKET+EBPF
+OriRottenstreich,andMukeshHira.2019.Elmo:sourceroutedmul-
+Asdescribedin§7.2,weimplementthesocketAPIinJasper
+ticastforpublicclouds.InProceedingsoftheACMSpecialInterest
+forusabilityanduseeBPFtoreducetheoverheadsofmessage
+GrouponDataCommunication(Beijing,China)(SIGCOMM’19).As-
+sociationforComputingMachinery,NewYork,NY,USA,458–471. duplicationdetectionatthereceivers.Herewedescribethe
+https://doi.org/10.1145/3341302.3342066 detailsofourimplementation.
+[40] AndrewSmith.2014.Fastmoney:thebattleagainstthehighfrequency Weprovideamechanismtoimplementasetmembership
+traders.TheGuardian7(2014).
+checkusingafixed-lengthbufferineBPF/XDP.Themainas-
+[41] ShivaramVenkataraman,ZonghengYang,MichaelFranklin,Benjamin
+sumptionthatenablesthisisthatpacketre-orderingshould
+Recht,andIonStoica.2016.Ernest:EfficientPerformancePrediction
+forLarge-ScaleAdvancedAnalytics.In13thUSENIXSymposiumonNet- notinterleavepacketsthataresentasecondapart.Asimilar
+workedSystemsDesignandImplementation(NSDI16).USENIXAssoci- assumptionhasbeenmadein[44]albeitinadifferentcon-
+ation,SantaClara,CA,363–378. https://www.usenix.org/conference/ textwherepacketssent10millisecondsapartareassumed
+nsdi16/technical-sessions/presentation/venkataraman
+tonevergetre-ordered.
+[42] Ashish Vulimiri, Philip Brighten Godfrey, Radhika Mittal, Justine
+Westartwithafixed-lengthbuffer𝐵 ofsizeNwhereN
+Sherry,SylviaRatnasamy,andScottShenker.2013.Lowlatencyvia
+redundancy.InProceedingsoftheNinthACMConferenceonEmerging equalsthesmallestpowerof2thatisgreaterthanorequal
+NetworkingExperimentsandTechnologies(SantaBarbara,California, to the message rate, 𝑅 (i.e., 𝑅 messages per second). This
+USA)(CoNEXT’13).AssociationforComputingMachinery,NewYork, restrictionon𝑁 allowsustoimplementmodulooperation,
+NY,USA. https://doi.org/10.1145/2535372.2535392
+not allowed in XDP, as a bitwise operation. The buffer is
+[43] JianlingWang,VivekGeorge,TuckerBalch,andMariaHybinette.2017.
+implemented as a bpf_map of size 𝑁. Algorithm 1 shows
+Stockyard:adiscreteevent-basedstockmarketexchangesimulator.
+InProceedingsofthe2017WinterSimulationConference(LasVegas, howweachievepacketde-duplicationandonlyacceptthe
+Nevada)(WSC’17).IEEEPress,Article89,11pages. packetcopythatisreceivedearliestanddiscardtherest.
+14
+
+Algorithm1PacketDe-DuplicationwithaFixed-Length
+Buffer
+1: Input:MessageID(𝑖𝑑),Buffer𝐵ofsize𝑁
+2: procedurePacketDeduplication(𝑖𝑑,𝐵,𝑁)
+3: 𝑖𝑛𝑑𝑒𝑥 ←𝑖𝑑 & (𝑁 −1)
+4: if𝐵[𝑖𝑛𝑑𝑒𝑥] <𝑖𝑑 then
+5: 𝐵[𝑖𝑛𝑑𝑒𝑥] ←𝑖𝑑
+6: Acceptthemessage
+7: elseif𝐵[𝑖𝑛𝑑𝑒𝑥] ==𝑖𝑑 then
+8: Discardthemessageasaduplicate
+9: else
+10: Error:𝐵[𝑖𝑛𝑑𝑒𝑥] >𝑖𝑑 ⊲AssumptionViolated
+11: endif
+12: endprocedure
+0
+1
+2
+3
+4
+5
+6
+7
+8
+9
+0 1 2 3 4 5 6 7 8 9
+Sender
+revieceR
+Triangular Inequality Violation Analysis
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.2
+0.0 0.0 0.01 0.0 0.04 0.0 0.0 0.0 0.0 0.0
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+0.8
+0.011.031.29 0.0 0.0 0.0 0.0 0.0 0.08 0.0
+0.060.010.120.010.01 0.0 0.020.01 0.0 0.07 0.6
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+0.4
+0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0
+0.0 0.0 0.01 0.0 0.0 0.0 0.0 0.0 0.0 0.02 0.2
+0.010.010.010.01 0.0 0.0 0.0 0.0 0.01 0.0
+0.0
+dnuof
+si
+noitaloiv
+qeni-irt
+a
+emit
+fo
+egatneceP
+B APPENDIX:LATENCY
+CHARACTERIZATIONINGCP
+Figure12showsthattriangularinequalityviolationsforpath
+latenciesarerareinGCP.
+C APPENDIX:FINANCIALEXCHANGE
+SETUPFORSIMULTANEOUSDELIVERY
+DEMONSTRATION
+(1) Belowwedescribethetradingalgorithmrunbyeach
+MPin§8.4.Thereisonesenderand100receiversin-
+volvedinthistradingsetup.
+(2) The sender creates trades, and each trade contains
+informationsuchasthetypeoftrade(BUYorSELL),
+thetradesymbol,thenumberofshares,andtheprice
+pershare.
+(3) Thefirstandlasttworeceivers(marketparticipants)
+aretheonesactivelyparticipatinginthetrading.
+(4) Allparticipantsuseasimilartradingalgorithm:Ifthe
+pricepersharegoesaboveaspecificthreshold,each
+oftheactiveparticipantsplacesanorderforthecorre-
+spondingtradesymbol.Theyalsoincludethecurrent
+timestampwhensubmittingtheirorders.
+(5) The CES receives the orders from the MPs and pro-
+cesses the orders using continuous matching algo-
+rithm[1].Whenthesenderreceivesmultipletrades
+for the same trade symbol, only the order with the
+earliesttimestampisprocessed.
+(6) Afterprocessing5000orders,theprofitearnedbyeach
+Figure12:TriangularinequalityviolationsarerareinGCP.
+marketparticipantisevaluatedandshowninTable2
+15
+

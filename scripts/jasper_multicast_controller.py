@@ -31,7 +31,22 @@ class JasperMulticastController(app_manager.RyuApp):
         self.packet_timestamps = {}
         # Maintain multicast tree (simplified for 4-node star topology)
         self.multicast_tree = {}
+        # Jasper: Hold-and-release buffer (per-port)
+        self.hold_release_buffer = {}
+        # Jasper: Deadline (ms) for hold-and-release (can be dynamic)
+        self.hold_release_deadline_ms = 1.0  # Default 1ms
+        # Jasper: Enable dynamic tree reshuffling
+        self.dynamic_tree = True
         self.logger.info("Jasper Multicast Controller started")
+
+    def set_hold_release_deadline(self, deadline_ms):
+        """Set hold-and-release deadline (ms) for all receivers"""
+        self.hold_release_deadline_ms = deadline_ms
+        self.logger.info(f"Set hold-and-release deadline: {deadline_ms} ms")
+
+    def enable_dynamic_tree(self, enabled=True):
+        self.dynamic_tree = enabled
+        self.logger.info(f"Dynamic multicast tree reshuffling set to {enabled}")
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -55,22 +70,16 @@ class JasperMulticastController(app_manager.RyuApp):
         Build a fair multicast tree inspired by Jasper
         For this mini-implementation, we'll create a simple tree
         that ensures fairness by ordering the receivers
+        If dynamic_tree is enabled, reshuffle order each time.
         """
-        # For this simplified 4-node star topology, we'll create a 
-        # multicast order that ensures fair receipt
-        # In a real Jasper implementation, this would build a proper tree
-        # based on network conditions and fair ordering principles
-        
-        # Create a simple tree with randomized order to simulate fair ordering
-        # In Jasper, this would be done based on network conditions and fairness metrics
         ports = [1, 2, 3, 4]  # Ports for our 4 hosts
-        random.shuffle(ports)  # Randomize to simulate different orderings
-        
+        if self.dynamic_tree:
+            import random
+            random.shuffle(ports)  # Randomize to simulate dynamic fairness
         self.multicast_tree[dpid] = {
             'order': ports,
             'delay': 0.0001  # Small artificial delay between each node (0.1ms)
         }
-        
         self.logger.info(f"Built fair multicast tree for switch {dpid}: {self.multicast_tree[dpid]}")
 
     def add_flow(self, datapath, priority, match, actions, buffer_id=None):
@@ -159,72 +168,75 @@ class JasperMulticastController(app_manager.RyuApp):
         - Prioritizes fairness in packet delivery
         - Uses multicast tree to determine forwarding order
         - Adds small artificial delays to simulate fair ordering
+        - Implements hold-and-release: buffer delivery, then release after deadline
         """
         ofproto = datapath.ofproto
         parser = datapath.ofproto_parser
         dpid = datapath.id
-        
+        import time
         # Record packet arrival time
         self.packet_timestamps[pkt_id] = {'arrival': time.time(), 'deliveries': {}}
-        
         # Get multicast tree for this switch
-        if dpid not in self.multicast_tree:
+        if dpid not in self.multicast_tree or self.dynamic_tree:
             self.build_fair_multicast_tree(dpid)
-        
         tree = self.multicast_tree[dpid]
         order = tree['order']
         delay = tree['delay']
-        
-        # Forward to each port in the determined order with slight delays
-        # to simulate the fair ordering in Jasper
+        # Hold-and-release: buffer packets per port, release after deadline
+        release_time = time.time() + (self.hold_release_deadline_ms / 1000.0)
         for i, port in enumerate(order):
-            if port != in_port:  # Don't send back to source
-                # Calculate simulated delay for this destination
-                # In real Jasper, this would be based on network conditions
-                # and proper fairness calculations
-                simulated_delay = i * delay
-                
-                # Record delivery time with simulated delay
-                delivery_time = time.time() + simulated_delay
-                self.packet_timestamps[pkt_id]['deliveries'][port] = delivery_time
-                
-                # Send packet to this destination
-                actions = [parser.OFPActionOutput(port)]
-                data = None
-                if msg.buffer_id == ofproto.OFP_NO_BUFFER:
-                    data = msg.data
-                
-                out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
-                                         in_port=in_port, actions=actions, data=data)
-                datapath.send_msg(out)
-                
-                # For demonstration, we add a small sleep to simulate the ordering
-                # In a real implementation, this would be handled by proper queueing
-                # time.sleep(delay)  # Uncomment for real demonstration
-                
-                self.logger.info(f"Jasper multicast: packet forwarded to port {port} (order {i+1})")
-        
-        # Log the fairness information
+            if port != in_port:
+                # Buffer packet for port
+                if port not in self.hold_release_buffer:
+                    self.hold_release_buffer[port] = []
+                self.hold_release_buffer[port].append((msg, datapath, in_port, parser, ofproto, pkt_id, release_time, i * delay))
+        # Immediately schedule release (in real Jasper, would be event-driven)
+        self.release_held_packets()
         self.log_fairness_metrics(pkt_id)
-    
+
+    def release_held_packets(self):
+        """Release held packets after their hold-and-release deadline"""
+        import time
+        now = time.time()
+        for port, pkts in list(self.hold_release_buffer.items()):
+            new_pkts = []
+            for (msg, datapath, in_port, parser, ofproto, pkt_id, release_time, extra_delay) in pkts:
+                if now >= release_time:
+                    # Apply extra delay for fair ordering
+                    if extra_delay > 0:
+                        time.sleep(extra_delay)
+                    actions = [parser.OFPActionOutput(port)]
+                    data = None
+                    if msg.buffer_id == ofproto.OFP_NO_BUFFER:
+                        data = msg.data
+                    out = parser.OFPPacketOut(datapath=datapath, buffer_id=msg.buffer_id,
+                                             in_port=in_port, actions=actions, data=data)
+                    datapath.send_msg(out)
+                    # Record delivery time
+                    self.packet_timestamps[pkt_id]['deliveries'][port] = time.time()
+                    self.logger.info(f"Jasper multicast: released packet to port {port}")
+                else:
+                    new_pkts.append((msg, datapath, in_port, parser, ofproto, pkt_id, release_time, extra_delay))
+            if new_pkts:
+                self.hold_release_buffer[port] = new_pkts
+            else:
+                del self.hold_release_buffer[port]
+
     def log_fairness_metrics(self, pkt_id):
-        """Log the fairness metrics for a multicast packet"""
+        """Log the fairness metrics for a multicast packet, including fairness window"""
         if pkt_id in self.packet_timestamps:
             packet_info = self.packet_timestamps[pkt_id]
             arrival = packet_info['arrival']
             deliveries = packet_info['deliveries']
-            
-            # Calculate latencies for each destination
             latencies = []
             for port, delivery_time in deliveries.items():
                 latency = delivery_time - arrival
                 latencies.append(latency)
-            
-            # Calculate Jain's Fairness Index
+            fairness = 1.0
             if latencies:
                 sum_latencies = sum(latencies)
                 sum_squared = sum(x**2 for x in latencies)
                 n = len(latencies)
                 fairness = (sum_latencies**2) / (n * sum_squared) if sum_squared > 0 else 1.0
-                
-                self.logger.info(f"Packet {pkt_id} - Latencies: {latencies}, Fairness Index: {fairness:.4f}")
+                fairness_window = max(latencies) - min(latencies) if len(latencies) > 1 else 0.0
+                self.logger.info(f"Packet {pkt_id} - Latencies: {latencies}, Fairness Index: {fairness:.4f}, Fairness Window: {fairness_window*1000:.2f} ms")
