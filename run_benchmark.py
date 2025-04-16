@@ -40,6 +40,12 @@ def run_full_benchmark(test_scenarios=None):
                 'duration': 10,
                 'message_rate': 10,   # 10 messages per second
                 'message_size': 1000  # 1000 bytes per message
+            },
+            {
+                'name': 'High Frequency',
+                'duration': 10,
+                'message_rate': 200,  # 200 messages per second
+                'message_size': 100   # 100 bytes per message
             }
         ]
     
@@ -57,8 +63,8 @@ def run_full_benchmark(test_scenarios=None):
         print(f"Test Scenario: {scenario['name']}")
         print("=" * 40)
         
-        # Test both implementations with this scenario
-        for implementation in ['basic_multicast', 'jasper_multicast']:
+        # Test all implementations with this scenario
+        for implementation in ['basic_multicast', 'jasper_multicast', 'dbo_multicast']:
             comparator.run_benchmark(implementation, scenario)
             
             # Small delay between tests
@@ -91,12 +97,12 @@ def run_full_benchmark(test_scenarios=None):
 def main():
     """Main function for standalone usage"""
     parser = argparse.ArgumentParser(description='Multicast Optimization Benchmark Suite')
-    parser.add_argument('--scenarios', type=int, default=3, help='Number of test scenarios to run (1-3)')
+    parser.add_argument('--scenarios', type=int, default=4, help='Number of test scenarios to run (1-4)')
     
     args = parser.parse_args()
     
     # Limit the number of scenarios based on user input
-    num_scenarios = min(max(1, args.scenarios), 3)
+    num_scenarios = min(max(1, args.scenarios), 4)
     
     # Define default test scenarios
     all_scenarios = [
@@ -117,6 +123,12 @@ def main():
             'duration': 10,
             'message_rate': 10,
             'message_size': 1000
+        },
+        {
+            'name': 'High Frequency',
+            'duration': 10,
+            'message_rate': 200,
+            'message_size': 100
         }
     ]
     

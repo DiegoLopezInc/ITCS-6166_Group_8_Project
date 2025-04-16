@@ -43,6 +43,40 @@
 
 ---
 
+## Simulation Paper Features Mapping
+
+This document summarizes how features from the CloudEx, Jasper, and DBO papers are mapped into the mini-project simulation.
+
+## CloudEx Features
+- High-precision clock synchronization (simulated clock offsets per port)
+- Artificial message delays (configurable in controller)
+- Dynamic delay adjustment (manual or feedback loop possible)
+- Fault tolerance (can simulate node/gateway failure)
+
+## Jasper Features
+- Dynamic multicast tree (randomized/reshuffled order per experiment)
+- Hold-and-release buffer (receiver-side delay for fairness)
+- Fairness window measurement (max delivery time difference)
+- Scalability experiments (increase number of receivers)
+
+## DBO Features
+- Logical delivery clocks (no clock synchronization required)
+- Post-hoc fairness calculation (delivery order based on logical clocks)
+- Delivery clock fairness and window metrics
+- High transaction rate stress test
+
+## Unified Benchmarking
+- All three approaches can be benchmarked in `comparison_framework.py`
+- Metrics: latency, Jain's Fairness Index, bandwidth efficiency, fairness window, delivery clock fairness
+- Results saved as CSV and plots for easy comparison
+
+## How to Extend
+- Add more nodes or experiment with more complex topologies
+- Tune controller parameters for deeper analysis
+- Integrate with real Mininet and Ryu runs for live experiments
+
+---
+
 ## Summary Table
 
 | Paper Feature                                      | Incorporated in Project? | Where/How Used                           |
@@ -53,6 +87,9 @@
 | Jain’s Fairness Index for evaluation               | Yes                     | Comparison framework, benchmarking       |
 | Topology adaptation for simulation                 | Yes                     | 4-node star topology                     |
 | Performance benchmarking/plots                     | Yes                     | Output from `run_benchmark.py`           |
+| High-precision clock synchronization (CloudEx)     | Yes                     | Simulated clock offsets per port         |
+| Dynamic multicast tree (Jasper)                    | Yes                     | Randomized/reshuffled order per experiment|
+| Logical delivery clocks (DBO)                      | Yes                     | Post-hoc fairness calculation            |
 
 ---
 

@@ -128,6 +128,67 @@ The benchmark results will be saved in the `results` directory:
 
 ---
 
+## Project Overview
+This mini-project simulates and compares multicast optimization strategies for software-defined networks (SDN) in financial exchanges. It is based on key ideas from CloudEx, Jasper, and DBO research papers, using a 4-node star topology in Mininet and a suite of SDN controllers and benchmarking tools.
+
+## Key Features
+- **Topologies:** 4-node star topology in Mininet
+- **Multicast Approaches:**
+  - Basic Multicast (CloudEx-inspired, with clock sync and artificial delays)
+  - Jasper-inspired Fair Multicast (dynamic multicast tree, hold-and-release)
+  - DBO-inspired Clockless Fair Multicast (logical delivery clocks, post-hoc fairness)
+- **Performance Metrics:**
+  - End-to-end latency
+  - Jain's Fairness Index
+  - Bandwidth efficiency
+  - Fairness window (max delivery time difference)
+  - Delivery clock fairness (DBO mode)
+- **Traffic Generation:** Simulated financial data packets
+- **Benchmarking:** Unified framework for running and comparing all approaches
+
+## File Structure
+- `topology/star_topology.py`: Mininet topology definition
+- `scripts/sdn_controller.py`: Basic SDN controller (CloudEx-inspired)
+- `scripts/jasper_multicast_controller.py`: Jasper-inspired fair multicast controller
+- `scripts/dbo_multicast_controller.py`: DBO-inspired controller (simulation logic in framework)
+- `scripts/comparison_framework.py`: Benchmarking and comparison framework
+- `scripts/traffic_generator.py`: Financial exchange traffic generator
+- `run_benchmark.py`: Main script to run all benchmarks
+- `requirements.txt`: Dependencies
+
+## How to Run Experiments
+1. **Setup:**
+   - Install dependencies: `pip install -r requirements.txt`
+   - Ensure Mininet and Ryu are installed and working
+2. **Run Benchmarks:**
+   - Execute `python run_benchmark.py` to run all modes (basic, jasper, dbo)
+   - Results and plots are saved in the `results/` directory
+3. **Customize Experiments:**
+   - Edit `scripts/comparison_framework.py` to change test scenarios (duration, rate, message size)
+   - Use setter methods in controllers to adjust delay, clock sync error, or fairness deadlines
+
+## Research Paper Features
+- **CloudEx:** Simulated clock synchronization, artificial delays, dynamic delay adjustment
+- **Jasper:** Dynamic multicast tree, hold-and-release, fairness window
+- **DBO:** Clockless fairness, logical delivery clocks, post-hoc ordering
+
+## Metrics & Plots
+- Average latency
+- Jain's Fairness Index
+- Bandwidth efficiency
+- Fairness window (ms)
+- Delivery clock fairness (DBO)
+
+## References
+- [CloudEx: A Fair-Access Financial Exchange in the Cloud]
+- [Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud]
+- [DBO: Fairness for Cloud-Hosted Financial Exchanges]
+
+## Contributors
+- [Your Name]
+
+---
+
 ### 8. References  
 - **arXiv Paper**: "Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud" (https://arxiv.org/html/2402.09527v1#S10) – Core inspiration for multicast tree design and fairness in cloud environments.
 - **Mininet Documentation**: Guided simulation environment setup and topology design (http://mininet.org/).  
