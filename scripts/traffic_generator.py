@@ -110,5 +110,18 @@ def main():
     finally:
         generator.close()
 
+# Market Data Broadcaster for SDN Multicast Demo
+MULTICAST_GRP = '224.1.1.1'
+MULTICAST_PORT = 5007
+
 if __name__ == '__main__':
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    ttl = 2
+    sock.setsockopt(socket.IPPROTO_IP, socket.IP_MULTICAST_TTL, ttl)
+    for i in range(100):
+        price = round(100 + random.uniform(-1, 1), 2)
+        msg = f"TICKER,PRICE,{price},SEQ,{i}"
+        sock.sendto(msg.encode(), (MULTICAST_GRP, MULTICAST_PORT))
+        print(f"Market data sent: {msg}")
+        time.sleep(0.5)
     main()

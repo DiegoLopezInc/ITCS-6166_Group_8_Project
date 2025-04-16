@@ -49,3 +49,114 @@ services:
       - .:/app
       - ./requirements-benchmark.txt:/app/requirements-benchmark.txt
     command: ["python", "run_benchmark.py"]
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: api_server
+    command: ["python", "exchange/api_server.py"]
+    ports:
+      - "5001:5001"
+    volumes:
+      - ./exchange:/app/exchange
+      - ./competition:/app/competition
+    network_mode: host
+    depends_on:
+      - mininet
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: dashboard
+    command: ["python", "visualization/dashboard.py"]
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./visualization:/app/visualization
+      - ./competition:/app/competition
+      - ./exchange:/app/exchange
+    network_mode: host
+    depends_on:
+      - api
+
+  bot1:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: bot1
+    command: ["python", "bots/sample_bot.py"]
+    depends_on:
+      - api
+    network_mode: host
+    volumes:
+      - ./bots:/app/bots
+
+  bot2:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: bot2
+    command: ["python", "bots/sample_bot.py"]
+    depends_on:
+      - api
+    network_mode: host
+    volumes:
+      - ./bots:/app/bots
+
+  bot3:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: bot3
+    command: ["python", "bots/sample_bot.py"]
+    depends_on:
+      - api
+    network_mode: host
+    volumes:
+      - ./bots:/app/bots
+
+  bot4:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: bot4
+    command: ["python", "bots/sample_bot.py"]
+    depends_on:
+      - api
+    network_mode: host
+    volumes:
+      - ./bots:/app/bots
+
+  marketdata:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: marketdata
+    command: ["python", "scripts/traffic_generator.py"]
+    network_mode: host
+    depends_on:
+      - mininet
+    volumes:
+      - ./scripts:/app/scripts
+
+  reactivebot:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: reactivebot
+    command: ["python", "bots/reactive_bot.py"]
+    depends_on:
+      - api
+      - marketdata
+    network_mode: host
+    volumes:
+      - ./bots:/app/bots
+
+  results:
+    image: busybox
+    container_name: results
+    volumes:
+      - ./results:/app/results
+    command: ["true"]
