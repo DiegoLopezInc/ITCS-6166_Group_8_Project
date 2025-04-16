@@ -1,0 +1,5 @@
+# Requirements for Ryu and Jasper controllers (no mininet)
+ryu
+numpy
+matplotlib
+tabulate

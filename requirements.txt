@@ -1,3 +1,5 @@
 mininet==2.3.0
-tabulate==0.9.0
+numpy==1.24.3
 matplotlib==3.8.0
+ryu==4.34
+tabulate==0.9.0

@@ -1,0 +1,4 @@
+# Requirements for benchmark runner (no mininet, no ryu)
+numpy
+matplotlib
+tabulate

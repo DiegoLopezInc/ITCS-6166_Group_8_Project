@@ -1,0 +1,8 @@
+# Dockerfile for Benchmark Runner
+FROM python:3.8-slim
+
+WORKDIR /app
+COPY . .
+RUN pip install --upgrade pip && pip install -r requirements-benchmark.txt
+
+CMD ["python", "run_benchmark.py"]

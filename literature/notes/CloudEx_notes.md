@@ -23,10 +23,6 @@
 - Contribution 3
 
 ## Methodology
-[Description of methods used]
-
-## Results
-
 Unfairness: Definitions and Remedies
 - Inbound Unfairness Ratio
     If gateway-assigned timestamp is earlier than the previous
@@ -38,6 +34,52 @@ Unfairness: Definitions and Remedies
     Added delay to the hold and release buffer to gateways to ensure fairness
 - Consequences for delays
     Cause system to be less responsive
+
+Market participants:
+- Gateways, central exchange server, cloud storage
+- Each owns a VM that is connected to one of the gateways. 
+- Also provided APIs to:
+    - Submit market data
+        - Symbol to be traded
+        - action (buy or sell)
+        - number of shares
+        - order type
+        - limit price (for limit orders)
+    - Query market data
+    - Subscribe to market data
+
+ZeroMQ:
+- Reliable network communication
+- Each gateway clock is precisely synchronized to the central exchange server clock
+
+Visualization of the limit order book:
+- validates orders from market participants and then assigns a globally synchronized timestamp before forwarding to centralized server.
+- orders confirmations from the centralized exchange server are then forwarded to market participants via the order handler.
+
+H/R Buffer:
+- Ensure real time market data is available to market participants at the same time.
+
+Sequencer:
+- Creates a priority queue based on order gateway-assigned timestamps.
+
+Match Engine (Google Bigtable):
+- Two data structures:
+    - Order book (tracks pending orders)
+    - Portfolio matrix (tracks participants assets and cash balance)
+- API:
+    - Market participants are provided an API to query historical market data from Bigtable
+
+Market Data Dissemination:
+- H/R buffers at the gateways
+- Market participants subscribe to data per symbol.
+- Release timestamp from matching engine to gateways
+
+
+## Results
+Tested over two trading competitions:
+- high school (3 hours, 1000 orders, 1000 trades, 10 symbols)
+- college course (8 days, 4.2 million orders, 330000 trades, ??? symbols)
+
     
 
 

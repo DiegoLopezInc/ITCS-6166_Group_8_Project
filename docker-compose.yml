@@ -1,0 +1,51 @@
+version: '3.8'
+services:
+  mininet:
+    build:
+      context: .
+      dockerfile: Dockerfile.mininet
+    container_name: mininet
+    privileged: true
+    network_mode: host
+    volumes:
+      - ./topology:/app/topology
+      - ./scripts:/app/scripts
+      - ./requirements.txt:/app/requirements.txt
+    tty: true
+
+  ryu:
+    build:
+      context: .
+      dockerfile: Dockerfile.ryu
+    container_name: ryu
+    network_mode: host
+    volumes:
+      - ./scripts:/app/scripts
+      - ./requirements-ryu.txt:/app/requirements-ryu.txt
+    command: ["ryu-manager", "scripts/sdn_controller.py"]
+
+  ryu_jasper:
+    build:
+      context: .
+      dockerfile: Dockerfile.ryu
+    container_name: ryu_jasper
+    network_mode: host
+    volumes:
+      - ./scripts:/app/scripts
+      - ./requirements-ryu.txt:/app/requirements-ryu.txt
+    command: ["ryu-manager", "scripts/jasper_multicast_controller.py"]
+
+  benchmark:
+    build:
+      context: .
+      dockerfile: Dockerfile.benchmark
+    container_name: benchmark
+    network_mode: host
+    depends_on:
+      - mininet
+      - ryu
+      - ryu_jasper
+    volumes:
+      - .:/app
+      - ./requirements-benchmark.txt:/app/requirements-benchmark.txt
+    command: ["python", "run_benchmark.py"]
