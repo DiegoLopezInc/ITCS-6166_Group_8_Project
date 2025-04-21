@@ -3,7 +3,7 @@ FROM ubuntu:20.04
 
 ENV DEBIAN_FRONTEND=noninteractive
 RUN apt-get update && \
-    apt-get install -y sudo python3 python3-pip mininet iproute2 iputils-ping && \
+    apt-get install -y sudo mininet python3 python3-pip iproute2 iputils-ping && \
     pip3 install --upgrade pip
 
 # Copy topology and scripts
@@ -11,6 +11,8 @@ WORKDIR /app
 COPY topology ./topology
 COPY scripts ./scripts
 COPY requirements.txt ./
+COPY bots ./bots
+ENV PYTHONPATH=/app
 
 RUN pip3 install -r requirements.txt
 

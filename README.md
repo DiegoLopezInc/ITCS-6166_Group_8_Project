@@ -232,3 +232,11 @@ docker-compose up --build
 - **arXiv Paper**: "Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud" (https://arxiv.org/html/2402.09527v1#S10) – Core inspiration for multicast tree design and fairness in cloud environments.
 - **Mininet Documentation**: Guided simulation environment setup and topology design (http://mininet.org/).  
 - **Ryu SDN Controller**: Used for managing the simulated SDON (https://book.ryu-sdn.org/en/html/).
+
+---
+
+### 10. Dashboard
+- **Swap in Jasper/DBO Controllers:** To use [Jasper](#dashboard) or DBO, simply change the `command` for the `ryu` service in [`docker-compose.yml`](docker-compose.yml):
+  - For Jasper: `command: ["ryu-manager", "scripts/jasper_multicast_controller.py"]`
+  - For DBO: `command: ["ryu-manager", "scripts/dbo_multicast_controller.py"]`
+  - See the [Dashboard](#dashboard) for live monitoring and to confirm which controller is active.

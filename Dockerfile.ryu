@@ -1,12 +1,11 @@
 # Dockerfile for Ryu SDN Controller
 FROM python:3.8-slim
 
-RUN pip install ryu
-
 WORKDIR /app
 COPY scripts ./scripts
 COPY requirements-ryu.txt ./
 
+RUN pip install --upgrade pip
 RUN pip install -r requirements-ryu.txt
 
 # Default command runs Ryu with a placeholder app (override in docker-compose)

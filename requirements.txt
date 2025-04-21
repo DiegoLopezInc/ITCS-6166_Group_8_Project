@@ -1,5 +1,7 @@
-mininet==2.3.0
 numpy==1.24.3
-matplotlib==3.8.0
+matplotlib==3.7.3
 ryu==4.34
 tabulate==0.9.0
+flask==2.2.5
+eventlet==0.31.0
+
