@@ -30,12 +30,3 @@ DBO achieves perfect fairness (100%) and sub-100 microsecond p99 latency in both
 
 ## Relevance to Our Project
 DBO's delivery-clock-based approach to fairness provides a valuable alternative to clock-synchronization-based solutions for our SDN mini-project. Its methodology and empirical results offer insights for designing fair and efficient order processing in simulated financial exchange networks, particularly in environments with unpredictable network latencies.
-
-## Key Figures
-[Reference to important figures/tables]
-
-## Citations to Follow
-[Other papers cited that might be worth reading]
-
-## Notes
-[Any additional thoughts or observations]

@@ -89,12 +89,3 @@ Tested over two trading competitions:
 
 ## Relevance to Our Project
 CloudEx's approach to fairness and latency management directly informs our SDN mini-project's multicast fairness and benchmarking. Its use of clock synchronization, message delay tuning, and empirical evaluation provides a strong foundation for designing and evaluating fair multicast strategies in our simulated financial exchange network.
-
-## Key Figures
-[Reference to important figures/tables]
-
-## Citations to Follow
-[Other papers cited that might be worth reading]
-
-## Notes
-[Any additional thoughts or observations]

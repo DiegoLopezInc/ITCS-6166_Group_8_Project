@@ -30,12 +30,3 @@ Jasper achieves low message holding durations and narrow delivery windows, suppo
 
 ## Relevance to Our Project
 Jasper's fair multicast strategies and scalable overlay design are directly relevant to our SDN mini-project. Its methodology informs our implementation of fair multicast in a simulated financial exchange, helping us benchmark and improve fairness and latency in our own network experiments.
-
-## Key Figures
-[Reference to important figures/tables]
-
-## Citations to Follow
-[Other papers cited that might be worth reading]
-
-## Notes
-[Any additional thoughts or observations]
