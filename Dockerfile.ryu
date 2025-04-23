@@ -5,8 +5,8 @@ WORKDIR /app
 COPY scripts ./scripts
 COPY requirements-ryu.txt ./
 
-RUN pip install --upgrade pip
-RUN pip install -r requirements-ryu.txt
+RUN pip install --no-cache-dir --upgrade pip && \
+    pip install --no-cache-dir -r requirements-ryu.txt
 
 # Default command runs Ryu with a placeholder app (override in docker-compose)
 CMD ["ryu-manager", "scripts/sdn_controller.py"]

@@ -11,6 +11,22 @@ from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet, ethernet, ether_types, ipv4, udp
 import time
+import threading
+from flask import Flask, request, jsonify
+
+api_app = Flask(__name__)
+controller_instance = None  # Will be set to the running controller
+
+def run_api():
+    api_app.run(host='0.0.0.0', port=5007, debug=False, use_reloader=False)
+
+@api_app.route('/api/set_logical_clocks', methods=['POST'])
+def api_set_logical_clocks():
+    enabled = bool(request.json.get('enabled', True))
+    if controller_instance:
+        controller_instance.enable_logical_clocks(enabled)
+        return jsonify({'status': 'ok', 'enabled': enabled})
+    return jsonify({'status': 'error', 'reason': 'controller not running'}), 500
 
 class DBOMulticastController(app_manager.RyuApp):
     """
@@ -23,11 +39,19 @@ class DBOMulticastController(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(DBOMulticastController, self).__init__(*args, **kwargs)
+        global controller_instance
+        controller_instance = self
         self.mac_to_port = {}
         self.multicast_groups = {}
         # Track per-packet delivery times (for fairness calculation)
         self.packet_deliveries = {}
+        # DBO: Enable/disable logical clocks
+        self.logical_clocks_enabled = True
         self.logger.info("DBO Multicast Controller started")
+
+    def enable_logical_clocks(self, enabled=True):
+        self.logical_clocks_enabled = enabled
+        self.logger.info(f"Logical clocks enabled: {enabled}")
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -112,8 +136,9 @@ class DBOMulticastController(app_manager.RyuApp):
                 datapath.send_msg(out)
                 delivery_times[port] = time.time()
         # Store delivery times for post-hoc fairness
-        self.packet_deliveries[pkt_id] = delivery_times
-        self.log_dbo_fairness(pkt_id)
+        if self.logical_clocks_enabled:
+            self.packet_deliveries[pkt_id] = delivery_times
+            self.log_dbo_fairness(pkt_id)
 
     def log_dbo_fairness(self, pkt_id):
         if pkt_id in self.packet_deliveries:
@@ -131,3 +156,7 @@ class DBOMulticastController(app_manager.RyuApp):
                 fairness = (sum_lat**2) / (n * sum_sq) if sum_sq > 0 else 1.0
                 fairness_window = max(logical_clocks) - min(logical_clocks) if len(logical_clocks) > 1 else 0.0
                 self.logger.info(f"DBO Packet {pkt_id} - Logical Clocks: {[round(x*1000,2) for x in logical_clocks]}, Fairness Index: {fairness:.4f}, Fairness Window: {fairness_window*1000:.2f} ms")
+
+# Start Flask API server in a background thread
+api_thread = threading.Thread(target=run_api, daemon=True)
+api_thread.start()

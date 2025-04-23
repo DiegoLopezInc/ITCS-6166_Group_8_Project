@@ -2,9 +2,13 @@
 FROM python:3.8-slim
 
 WORKDIR /app
-COPY . .
-COPY bots ./bots
+# Copy only requirements file first to utilize Docker cache
+COPY requirements-benchmark.txt .
 ENV PYTHONPATH=/app
-RUN pip install --upgrade pip && pip install -r requirements-benchmark.txt
+RUN pip install --upgrade pip --no-cache-dir && \
+    pip install -r requirements-benchmark.txt --no-cache-dir
+
+# Copy the rest of the application
+COPY . .
 
 CMD ["python", "run_benchmark.py"]

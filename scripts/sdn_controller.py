@@ -11,6 +11,35 @@ from ryu.controller.handler import set_ev_cls
 from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet, ethernet, ether_types, ipv4, udp
 
+# --- Flask API for runtime parameter updates ---
+import threading
+from flask import Flask, request, jsonify
+
+api_app = Flask(__name__)
+controller_instance = None  # Will be set to the running controller
+
+def run_api():
+    api_app.run(host='0.0.0.0', port=5005, debug=False, use_reloader=False)
+
+@api_app.route('/api/set_artificial_delay', methods=['POST'])
+def api_set_artificial_delay():
+    delay = float(request.json.get('delay_ms', 0.0))
+    if controller_instance:
+        controller_instance.set_artificial_delay(delay)
+        return jsonify({'status': 'ok', 'delay_ms': delay})
+    return jsonify({'status': 'error', 'reason': 'controller not running'}), 500
+
+@api_app.route('/api/set_clock_offset', methods=['POST'])
+def api_set_clock_offset():
+    port = int(request.json.get('port'))
+    offset = float(request.json.get('offset_ms', 0.0))
+    if controller_instance:
+        controller_instance.set_clock_offset(port, offset)
+        return jsonify({'status': 'ok', 'port': port, 'offset_ms': offset})
+    return jsonify({'status': 'error', 'reason': 'controller not running'}), 500
+
+# --- End Flask API ---
+
 class FinancialExchangeController(app_manager.RyuApp):
     """
     Basic SDN controller for financial exchange simulation
@@ -21,6 +50,8 @@ class FinancialExchangeController(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(FinancialExchangeController, self).__init__(*args, **kwargs)
+        global controller_instance
+        controller_instance = self
         self.mac_to_port = {}
         # Track multicast groups
         self.multicast_groups = {}
@@ -30,15 +61,15 @@ class FinancialExchangeController(app_manager.RyuApp):
         self.artificial_delay_ms = 0.0
         self.logger.info("Financial Exchange Controller started")
 
-    def set_clock_offset(self, port, offset_ms):
-        """Set simulated clock offset for a port (CloudEx)"""
-        self.clock_offsets[port] = offset_ms
-        self.logger.info(f"Set clock offset for port {port}: {offset_ms} ms")
-
     def set_artificial_delay(self, delay_ms):
         """Set artificial delay for multicast (CloudEx)"""
         self.artificial_delay_ms = delay_ms
         self.logger.info(f"Set artificial multicast delay: {delay_ms} ms")
+
+    def set_clock_offset(self, port, offset_ms):
+        """Set simulated clock offset for a port (CloudEx)"""
+        self.clock_offsets[port] = offset_ms
+        self.logger.info(f"Set clock offset for port {port}: {offset_ms} ms")
 
     @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
     def switch_features_handler(self, ev):
@@ -152,3 +183,7 @@ class FinancialExchangeController(app_manager.RyuApp):
                                  in_port=in_port, actions=actions, data=data)
         datapath.send_msg(out)
         self.logger.info(f"Multicast packet forwarded to all ports from {in_port} with CloudEx delay/offsets")
+
+# Start Flask API server in a background thread
+api_thread = threading.Thread(target=run_api, daemon=True)
+api_thread.start()

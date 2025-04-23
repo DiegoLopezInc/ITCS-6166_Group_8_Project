@@ -1,7 +1,7 @@
 """
 Simple Real-Time Web Dashboard for Competition Visualization
 """
-from flask import Flask, render_template_string, jsonify, request, redirect, url_for
+from flask import Flask, render_template_string, jsonify, request, redirect, url_for, session
 import threading
 import time
 from competition.scoring import Scoring
@@ -34,13 +34,46 @@ DASHBOARD_HTML = '''
     </style>
 </head>
 <body>
-    <h1>Leaderboard</h1>
-    <table>
-        <tr><th>Rank</th><th>Trader</th><th>P&L</th></tr>
-        {% for rank, (trader, pnl) in enumerate(leaderboard, 1) %}
-        <tr><td>{{rank}}</td><td>{{trader}}</td><td>{{'%.2f' % pnl}}</td></tr>
-        {% endfor %}
-    </table>
+    <h1>Trading Competition Dashboard</h1>
+    <div class="chart">
+        <h2>Simulation Overview</h2>
+        <table>
+            <tr><th>Simulation</th><th>Latency (ms)</th><th>Fairness Index</th><th>Status</th></tr>
+            {% for sim in simulations %}
+            <tr><td>{{sim['name']}}</td><td>{{sim['latency']}}</td><td>{{sim['fairness']}}</td><td>{{sim['status']}}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div class="controls">
+        <h2>Feature Tinkering</h2>
+        <form method="post" action="/set_feature">
+            <label>Clock Sync Error (CloudEx):</label>
+            <input type="number" step="0.01" name="clock_sync_error" value="{{features.clock_sync_error}}"> ms
+            <br>
+            <label>Fairness Window (Jasper):</label>
+            <input type="number" step="0.01" name="jasper_fairness_window" value="{{features.jasper_fairness_window}}"> ms
+            <br>
+            <label>Enable Hold-and-Release (Jasper):</label>
+            <input type="checkbox" name="jasper_hold_release" {% if features.jasper_hold_release %}checked{% endif %}>
+            <br>
+            <label>Enable Logical Clocks (DBO):</label>
+            <input type="checkbox" name="dbo_logical_clocks" {% if features.dbo_logical_clocks %}checked{% endif %}>
+            <br>
+            <button type="submit">Apply Features</button>
+        </form>
+    </div>
+    <h2>Demo Stock Trading Competition</h2>
+    <form method="post" action="/start_competition"><button type="submit">Start Competition</button></form>
+    <form method="post" action="/stop_competition"><button type="submit">Stop Competition</button></form>
+    <div class="chart">
+        <h2>Leaderboard</h2>
+        <table>
+            <tr><th>Rank</th><th>Trader</th><th>P&L</th></tr>
+            {% for rank, (trader, pnl) in enumerate(leaderboard, 1) %}
+            <tr><td>{{rank}}</td><td>{{trader}}</td><td>{{'%.2f' % pnl}}</td></tr>
+            {% endfor %}
+        </table>
+    </div>
     <h2>Recent Trades</h2>
     <table>
         <tr><th>Buy</th><th>Sell</th><th>Price</th><th>Qty</th></tr>
@@ -87,6 +120,20 @@ DASHBOARD_HTML = '''
 ACTIVE_CONTROLLER = os.environ.get('RYU_CONTROLLER', 'sdn_controller.py')
 MARKETDATA_PAUSED = False
 
+# Simulation and feature state (in-memory for demo)
+simulation_metrics = [
+    {'name': 'CloudEx', 'latency': 1.0, 'fairness': 0.95, 'status': 'Idle'},
+    {'name': 'Jasper', 'latency': 0.8, 'fairness': 0.98, 'status': 'Idle'},
+    {'name': 'DBO', 'latency': 1.2, 'fairness': 0.99, 'status': 'Idle'},
+]
+features = {
+    'clock_sync_error': 0.05,
+    'jasper_fairness_window': 1.0,
+    'jasper_hold_release': True,
+    'dbo_logical_clocks': True
+}
+competition_running = False
+
 @app.route('/', methods=['GET', 'POST'])
 def dashboard():
     leaderboard = scoring.get_leaderboard()
@@ -108,10 +155,10 @@ def dashboard():
         "data": [go.Bar(x=list(bot_counts.keys()), y=list(bot_counts.values()), name='Orders')],
         "layout": go.Layout(title="Bot Activity (Last 50 Trades)", xaxis={'title':'Bot'}, yaxis={'title':'Orders'})
     }, output_type='div', include_plotlyjs=False) if bot_counts else "<p>No bot activity yet.</p>"
-    global ACTIVE_CONTROLLER, MARKETDATA_PAUSED
+    global ACTIVE_CONTROLLER, MARKETDATA_PAUSED, simulation_metrics, features, competition_running
     ryu_status = get_container_status('ryu')
     marketdata_status = get_container_status('marketdata')
-    return render_template_string(DASHBOARD_HTML, leaderboard=leaderboard, trades=trades, controller=ACTIVE_CONTROLLER, market_chart=market_chart, bot_chart=bot_chart, ryu_status=ryu_status, marketdata_status=marketdata_status)
+    return render_template_string(DASHBOARD_HTML, leaderboard=leaderboard, trades=trades, controller=ACTIVE_CONTROLLER, market_chart=market_chart, bot_chart=bot_chart, ryu_status=ryu_status, marketdata_status=marketdata_status, simulations=simulation_metrics, features=features)
 
 @app.route('/set_controller', methods=['POST'])
 def set_controller():
@@ -152,6 +199,49 @@ def api_leaderboard():
 @app.route('/api/trades')
 def api_trades():
     return jsonify(order_book.get_trades())
+
+@app.route('/set_feature', methods=['POST'])
+def set_feature():
+    global features
+    # Get new values from form
+    features['clock_sync_error'] = float(request.form.get('clock_sync_error', features['clock_sync_error']))
+    features['jasper_fairness_window'] = float(request.form.get('jasper_fairness_window', features['jasper_fairness_window']))
+    features['jasper_hold_release'] = 'jasper_hold_release' in request.form
+    features['dbo_logical_clocks'] = 'dbo_logical_clocks' in request.form
+
+    # --- Actually update running controllers ---
+    # CloudEx (sdn_controller.py)
+    try:
+        requests.post('http://localhost:5005/api/set_artificial_delay', json={'delay_ms': features['clock_sync_error']})
+        # Optionally set clock offsets per port if you expose those controls
+    except Exception as e:
+        print(f"[WARN] Could not update CloudEx artificial delay: {e}")
+    # Jasper (jasper_multicast_controller.py)
+    try:
+        requests.post('http://localhost:5006/api/set_hold_release_deadline', json={'deadline_ms': features['jasper_fairness_window']})
+        requests.post('http://localhost:5006/api/set_hold_release', json={'enabled': features['jasper_hold_release']})
+    except Exception as e:
+        print(f"[WARN] Could not update Jasper features: {e}")
+    # DBO (dbo_multicast_controller.py)
+    try:
+        requests.post('http://localhost:5007/api/set_logical_clocks', json={'enabled': features['dbo_logical_clocks']})
+    except Exception as e:
+        print(f"[WARN] Could not update DBO logical clocks: {e}")
+    return redirect(url_for('dashboard'))
+
+@app.route('/start_competition', methods=['POST'])
+def start_competition():
+    global competition_running
+    competition_running = True
+    # TODO: Start competition logic (bots, order book, etc.)
+    return redirect(url_for('dashboard'))
+
+@app.route('/stop_competition', methods=['POST'])
+def stop_competition():
+    global competition_running
+    competition_running = False
+    # TODO: Stop competition logic
+    return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8050, debug=True)

@@ -12,6 +12,38 @@ from ryu.ofproto import ofproto_v1_3
 from ryu.lib.packet import packet, ethernet, ether_types, ipv4, udp
 import time
 import random
+import threading
+from flask import Flask, request, jsonify
+
+api_app = Flask(__name__)
+controller_instance = None  # Will be set to the running controller
+
+def run_api():
+    api_app.run(host='0.0.0.0', port=5006, debug=False, use_reloader=False)
+
+@api_app.route('/api/set_hold_release_deadline', methods=['POST'])
+def api_set_hold_release_deadline():
+    deadline = float(request.json.get('deadline_ms', 1.0))
+    if controller_instance:
+        controller_instance.set_hold_release_deadline(deadline)
+        return jsonify({'status': 'ok', 'deadline_ms': deadline})
+    return jsonify({'status': 'error', 'reason': 'controller not running'}), 500
+
+@api_app.route('/api/set_hold_release', methods=['POST'])
+def api_set_hold_release():
+    enabled = bool(request.json.get('enabled', True))
+    if controller_instance:
+        controller_instance.enable_hold_release(enabled)
+        return jsonify({'status': 'ok', 'enabled': enabled})
+    return jsonify({'status': 'error', 'reason': 'controller not running'}), 500
+
+@api_app.route('/api/set_dynamic_tree', methods=['POST'])
+def api_set_dynamic_tree():
+    enabled = bool(request.json.get('enabled', True))
+    if controller_instance:
+        controller_instance.enable_dynamic_tree(enabled)
+        return jsonify({'status': 'ok', 'enabled': enabled})
+    return jsonify({'status': 'error', 'reason': 'controller not running'}), 500
 
 class JasperMulticastController(app_manager.RyuApp):
     """
@@ -24,6 +56,8 @@ class JasperMulticastController(app_manager.RyuApp):
 
     def __init__(self, *args, **kwargs):
         super(JasperMulticastController, self).__init__(*args, **kwargs)
+        global controller_instance
+        controller_instance = self
         self.mac_to_port = {}
         # Track multicast groups and their members
         self.multicast_groups = {}
@@ -37,6 +71,8 @@ class JasperMulticastController(app_manager.RyuApp):
         self.hold_release_deadline_ms = 1.0  # Default 1ms
         # Jasper: Enable dynamic tree reshuffling
         self.dynamic_tree = True
+        # Jasper: Enable/disable hold-and-release
+        self.hold_release_enabled = True
         self.logger.info("Jasper Multicast Controller started")
 
     def set_hold_release_deadline(self, deadline_ms):
@@ -48,22 +84,9 @@ class JasperMulticastController(app_manager.RyuApp):
         self.dynamic_tree = enabled
         self.logger.info(f"Dynamic multicast tree reshuffling set to {enabled}")
 
-    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
-    def switch_features_handler(self, ev):
-        """Handle switch features reply to install table-miss flow entry"""
-        datapath = ev.msg.datapath
-        ofproto = datapath.ofproto
-        parser = datapath.ofproto_parser
-
-        # Install table-miss flow entry
-        match = parser.OFPMatch()
-        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
-                                         ofproto.OFPCML_NO_BUFFER)]
-        self.add_flow(datapath, 0, match, actions)
-        self.logger.info(f"Switch {datapath.id} connected")
-        
-        # Initialize the multicast tree for this switch
-        self.build_fair_multicast_tree(datapath.id)
+    def enable_hold_release(self, enabled=True):
+        self.hold_release_enabled = enabled
+        self.logger.info(f"Hold-and-release enabled: {enabled}")
 
     def build_fair_multicast_tree(self, dpid):
         """
@@ -97,6 +120,23 @@ class JasperMulticastController(app_manager.RyuApp):
             mod = parser.OFPFlowMod(datapath=datapath, priority=priority,
                                     match=match, instructions=inst)
         datapath.send_msg(mod)
+
+    @set_ev_cls(ofp_event.EventOFPSwitchFeatures, CONFIG_DISPATCHER)
+    def switch_features_handler(self, ev):
+        """Handle switch features reply to install table-miss flow entry"""
+        datapath = ev.msg.datapath
+        ofproto = datapath.ofproto
+        parser = datapath.ofproto_parser
+
+        # Install table-miss flow entry
+        match = parser.OFPMatch()
+        actions = [parser.OFPActionOutput(ofproto.OFPP_CONTROLLER,
+                                         ofproto.OFPCML_NO_BUFFER)]
+        self.add_flow(datapath, 0, match, actions)
+        self.logger.info(f"Switch {datapath.id} connected")
+        
+        # Initialize the multicast tree for this switch
+        self.build_fair_multicast_tree(datapath.id)
 
     @set_ev_cls(ofp_event.EventOFPPacketIn, MAIN_DISPATCHER)
     def packet_in_handler(self, ev):
@@ -240,3 +280,7 @@ class JasperMulticastController(app_manager.RyuApp):
                 fairness = (sum_latencies**2) / (n * sum_squared) if sum_squared > 0 else 1.0
                 fairness_window = max(latencies) - min(latencies) if len(latencies) > 1 else 0.0
                 self.logger.info(f"Packet {pkt_id} - Latencies: {latencies}, Fairness Index: {fairness:.4f}, Fairness Window: {fairness_window*1000:.2f} ms")
+
+# Start Flask API server in a background thread
+api_thread = threading.Thread(target=run_api, daemon=True)
+api_thread.start()
