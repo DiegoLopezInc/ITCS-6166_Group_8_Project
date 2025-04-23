@@ -2,3 +2,6 @@
 numpy
 matplotlib
 tabulate
+flask
+plotly
+

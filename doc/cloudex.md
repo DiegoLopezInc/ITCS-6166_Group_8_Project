@@ -1,7 +1,5 @@
 # CloudEx: A Fair-Access Financial Exchange in the Cloud
 
-# CloudEx Algorithm: Executive Brief
-
 CloudEx is a multicast algorithm designed for fairness and low latency in financial networks, leveraging clock synchronization and dynamic message delay tuning. By coordinating the timing of message delivery across all receivers, CloudEx ensures that market data is distributed both quickly and fairly, even in geographically distributed or cloud-based environments. Its adaptive approach allows it to maintain high performance under varying network conditions.
 
 **Key Features:**

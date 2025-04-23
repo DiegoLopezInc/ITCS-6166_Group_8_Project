@@ -15,19 +15,19 @@ This project aims to develop a simplified simulation to model and optimize a sof
 ---
 
 ### 3. Progress Summary  
-This project has been scaled down to a 4-hour mini-implementation that focuses on the essential components of multicast optimization for financial exchanges. The simplified approach includes a 4-node topology in Mininet with a basic OpenFlow controller, two multicast implementations (basic and Jasper-inspired), and performance comparison measuring latency and Jain's Fairness Index.
+This project has been scaled down to a mini-implementation that focuses on the essential components of multicast optimization for financial exchanges. The simplified approach includes a 4-node topology in Mininet with a basic OpenFlow controller, two multicast implementations (basic and Jasper-inspired), and performance comparison measuring latency and Jain's Fairness Index.
 
 ---
 
 ### 4. Mini-Project Scope
 
 #### 1. Simplified Network Simulation
-- Create a **4-node topology** in Mininet (instead of 8-node)
+- Create a **4-node topology** in Mininet
 - Implement a basic OpenFlow controller with Ryu
-- Focus on a star topology (simpler than ring)
+- Focus on a star topology
 
 #### 2. Streamlined Multicast Implementation
-- Implement **only 2 multicast approaches** (instead of 3):
+- Implement **only 2 multicast approaches**:
   - Basic multicast (baseline)
   - Jasper-inspired fair multicast optimization
 
@@ -38,7 +38,7 @@ This project has been scaled down to a 4-hour mini-implementation that focuses o
 - Generate simple financial data packets for testing
 
 #### 4. Minimalist Visualization
-- Command-line output of results
+- Dashboard visualization of results
 - Simple Matplotlib bar charts comparing approaches
 
 ---
