@@ -1,85 +1,91 @@
-# Outline: Adapting SDN Financial Exchange Project for Algorithmic Stock Trading Competition
+# Trading Competition: How It Works (Current Implementation)
 
-This outline describes the steps and components needed to transform the SDN multicast simulation into a demo platform for an algorithmic stock trading competition.
-
----
-
-## 1. Core Components
-
-### 1.1 Exchange Simulation (Already Implemented)
-- SDN-based financial exchange network (Mininet, Ryu controllers)
-- Multicast market data dissemination (CloudEx/Jasper/DBO)
-
-### 1.2 New Components for Competition
-- **Order Entry API**: REST or TCP server for bots to submit orders (buy/sell)
-- **Order Matching Engine**: Central order book to match orders, generate trades
-- **Bot Integration SDK**: Simple Python client for participants to connect and trade
-- **Competition Logic**: Scoring, P&L tracking, leaderboard
-- **Live Visualization (Optional)**: Real-time stats, trades, rankings
+This document describes the current state of the SDN-based stock trading competition platform, highlighting the workflow, core components, and how bots, the exchange, and the dashboard interact in the live demo.
 
 ---
 
-## 2. Directory Structure (Proposed Additions)
+## 1. Core Components (Implemented)
+
+### 1.1 SDN Exchange Simulation
+- **Mininet** simulates a 4-node star topology network.
+- **Ryu Controllers** manage multicast delivery using different strategies (CloudEx, Jasper, DBO).
+- **Multicast** is used to disseminate real-time market data to all endpoints.
+
+### 1.2 Order Entry & Matching
+- **API Server (`exchange/api_server.py`)**: RESTful API for bots to submit buy/sell orders and query market state.
+- **Order Book (`exchange/order_book.py`)**: Centralized matching engine that processes orders and generates trades.
+
+### 1.3 Trading Bots
+- **Bots** (in the `bots/` directory) connect to the API server, receive market data via multicast, and submit orders using custom strategies.
+- Each bot is identified by a unique trader ID.
+
+### 1.4 Competition Logic & Scoring
+- **Scoring Module (`competition/scoring.py`)**: Tracks each bot’s profit & loss (P&L) and trade history.
+- **Leaderboard (`competition/leaderboard.py`)**: Provides up-to-date rankings based on P&L.
+
+### 1.5 Live Dashboard
+- **Dashboard (`visualization/dashboard.py`)**: Web interface for:
+  - Monitoring simulation metrics and controller status
+  - Adjusting SDN/multicast parameters in real time
+  - Viewing a live, auto-refreshing competition leaderboard
+
+---
+
+## 2. Directory Structure
 
 ```
-COMPETITION_OUTLINE.md
 exchange/
   order_book.py           # Matching engine logic
-  api_server.py           # REST/TCP API for order entry
+  api_server.py           # REST API for order entry
 bots/
   sample_bot.py           # Example trading bot/client
-  bot_interface.py        # SDK for participants
+  bot_interface.py        # SDK for bots
 competition/
   scoring.py              # P&L, ranking logic
-  leaderboard.py          # Web or CLI leaderboard
+  leaderboard.py          # Leaderboard logic
 visualization/
-  dashboard.py            # (Optional) Real-time web dashboard
+  dashboard.py            # Real-time web dashboard
 ```
 
 ---
 
-## 3. Implementation Steps
+## 3. Competition Workflow (Current Demo)
 
-1. **Design Order Entry API**
-    - Choose REST (Flask/FastAPI) or TCP socket protocol
-    - Define endpoints/messages for order submission, status, market data subscription
-2. **Implement Order Book & Matching Engine**
-    - Centralized order matching (limit/market orders)
-    - Trade event generation, order status updates
-3. **Bot SDK & Sample Bot**
-    - Provide a Python client to connect, receive market data, and submit orders
-    - Document API usage and provide a template
-4. **Competition Logic**
-    - Track P&L, enforce risk limits if needed
-    - Periodically update and broadcast leaderboard
-5. **Visualization (Optional)**
-    - Live dashboard for trades, market data, and rankings
-6. **Integrate with Existing SDN Simulation**
-    - Ensure market data flows through multicast (as now)
-    - Orders/trades flow through the new API
-7. **Update Docker/Compose**
-    - Add services for API server, bots, and dashboard
-    - Document orchestration for demo/competition
+1. **Start the SDN Network:**  
+   Launch Mininet and the Ryu controller (choose CloudEx, Jasper, or DBO).
+2. **Start the Exchange:**  
+   Run the API server and order book.
+3. **Run Trading Bots:**  
+   Each bot connects to the API, receives multicast market data, and submits orders.
+4. **Order Matching:**  
+   The order book matches buy/sell orders and executes trades.
+5. **Scoring & Leaderboard:**  
+   Each trade updates the bots’ P&L. The leaderboard ranks bots by live P&L.
+6. **Live Monitoring:**  
+   The dashboard displays simulation metrics and the live leaderboard. Users can adjust SDN parameters on the fly, affecting the running competition.
 
 ---
 
-## 4. Example Workflow
+## 4. Key Features
 
-1. Start the SDN simulation (Mininet + Ryu controller)
-2. Launch the order entry API and matching engine
-3. Participants run their bots (locally or in Docker)
-4. Bots receive market data via multicast, submit orders via API
-5. Trades are matched, P&L and leaderboard are updated
-6. (Optional) Dashboard displays live competition status
-
----
-
-## 5. Next Steps
-- Review this outline with stakeholders
-- Decide on API protocol and visualization scope
-- Begin implementation in the proposed subdirectories
-- Update documentation and Compose file as components are added
+- **Real-Time Market Data:**  
+  Market data is multicast to all endpoints, simulating a real exchange environment.
+- **Live Parameter Tuning:**  
+  Users can adjust SDN and controller parameters from the dashboard, which takes effect immediately.
+- **Bot Competition:**  
+  Bots compete based on their trading strategies. Rankings are updated live.
+- **Visualization:**  
+  The dashboard provides a clear view of both network/simulation status and competition results.
 
 ---
 
-*This outline provides a modular roadmap for evolving the SDN financial exchange simulation into a full-featured algorithmic trading competition platform.*
+## 5. Extending the Platform
+
+- Add new bot strategies or risk management features
+- Enhance the order book with more order types (limit, cancel, etc.)
+- Expand the dashboard with more analytics or downloadable results
+- Integrate additional SDN controllers or topologies
+
+---
+
+*This document reflects the current implementation of the SDN trading competition platform. For code details, see the respective modules in the project directories.*
