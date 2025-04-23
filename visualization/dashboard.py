@@ -31,9 +31,15 @@ DASHBOARD_HTML = '''
         .controls { margin: 20px; }
         .controls form { display: inline-block; margin-right: 20px; }
         .chart { width: 60%; margin: 20px auto; }
+        .nav { margin: 20px; }
+        .nav a { margin-right: 20px; font-weight: bold; color: #337ab7; text-decoration: none; }
     </style>
 </head>
 <body>
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/leaderboard">Competition Leaderboard</a>
+    </div>
     <h1>Trading Competition Dashboard</h1>
     <div class="chart">
         <h2>Simulation Overview</h2>
@@ -116,6 +122,38 @@ DASHBOARD_HTML = '''
 </html>
 '''
 
+LEADERBOARD_HTML = '''
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Competition Leaderboard</title>
+    <meta http-equiv="refresh" content="2">
+    <style>
+        body { font-family: Arial; }
+        table { border-collapse: collapse; width: 40%; margin: 40px auto; }
+        th, td { border: 1px solid #ddd; padding: 10px; text-align: center; font-size: 1.2em; }
+        th { background: #222; color: #fff; }
+        h1 { text-align: center; }
+        .nav { margin: 20px; text-align: center; }
+        .nav a { margin-right: 20px; font-weight: bold; color: #337ab7; text-decoration: none; }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/">Dashboard</a>
+        <a href="/leaderboard">Competition Leaderboard</a>
+    </div>
+    <h1>Competition Leaderboard</h1>
+    <table>
+        <tr><th>Rank</th><th>Trader</th><th>P&L</th></tr>
+        {% for rank, (trader, pnl) in enumerate(leaderboard, 1) %}
+        <tr><td>{{rank}}</td><td>{{trader}}</td><td>{{'%.2f' % pnl}}</td></tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
+'''
+
 # Demo state (in a real system, use shared state or env vars)
 ACTIVE_CONTROLLER = os.environ.get('RYU_CONTROLLER', 'sdn_controller.py')
 MARKETDATA_PAUSED = False
@@ -159,6 +197,11 @@ def dashboard():
     ryu_status = get_container_status('ryu')
     marketdata_status = get_container_status('marketdata')
     return render_template_string(DASHBOARD_HTML, leaderboard=leaderboard, trades=trades, controller=ACTIVE_CONTROLLER, market_chart=market_chart, bot_chart=bot_chart, ryu_status=ryu_status, marketdata_status=marketdata_status, simulations=simulation_metrics, features=features)
+
+@app.route('/leaderboard')
+def leaderboard_screen():
+    leaderboard = scoring.get_leaderboard()
+    return render_template_string(LEADERBOARD_HTML, leaderboard=leaderboard)
 
 @app.route('/set_controller', methods=['POST'])
 def set_controller():
