@@ -56,7 +56,7 @@ To simulate the network, we use Mininet to create a virtual SDN with a **4-node 
 3. **Digital Twin**: Python scripts monitor and control the Mininet network, collecting metrics and enabling real-time parameter adjustment via the dashboard.
 4. **Multicast Implementation**: Three multicast controllers (CloudEx, Jasper, DBO) are implemented in Python, each with its own fairness and performance features. The controllers can be switched live from the dashboard.
 5. **Testing**: Synthetic financial traffic is injected, and all three mechanisms are benchmarked for latency, fairness, and throughput. Results are displayed on the dashboard, including a real-time leaderboard for trading bots.
-6. **Visualization**: The Flask-based dashboard, not working as intendend. 
+6. **Visualization**: The Flask-based dashboard, not working as intended.  
 
 ### 6.2 Notebook Visualization
 
