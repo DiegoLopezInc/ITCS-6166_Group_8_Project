@@ -283,8 +283,10 @@ def start_competition():
 def stop_competition():
     global competition_running
     competition_running = False
-    # TODO: Stop competition logic
+    # Properly stop competition logic (placeholder for now)
+    # For example, signal bots or backend to stop
+    print("Competition stopped by user.")
     return redirect(url_for('dashboard'))
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=8050, debug=True)
+    app.run(host='0.0.0.0', port=8050, debug=False)

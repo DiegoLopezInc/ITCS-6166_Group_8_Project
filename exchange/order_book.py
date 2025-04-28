@@ -5,6 +5,7 @@ Central Order Book and Matching Engine for Competition
 - Used by the exchange API server in the SDN trading competition
 """
 from collections import deque
+import threading
 
 class Order:
     """
@@ -36,44 +37,49 @@ class OrderBook:
         self.bids = deque()  # buy orders, max price first
         self.asks = deque()  # sell orders, min price first
         self.trades = []
+        self._lock = threading.Lock()
 
-    def add_order(self, order: Order):
+    def add_order(self, order: 'Order'):
         """
         Add a new order to the book and attempt to match orders.
         Args:
             order (Order): The order to add
         """
-        if order.side == 'buy':
-            self.bids.append(order)
-            self.bids = deque(sorted(self.bids, key=lambda o: (-o.price, o.timestamp)))
-        else:
-            self.asks.append(order)
-            self.asks = deque(sorted(self.asks, key=lambda o: (o.price, o.timestamp)))
-        self.match()
+        if order.price <= 0 or order.qty <= 0:
+            raise ValueError("Order price and quantity must be positive.")
+        with self._lock:
+            if order.side == 'buy':
+                self.bids.append(order)
+                self.bids = deque(sorted(self.bids, key=lambda o: (-o.price, o.timestamp)))
+            else:
+                self.asks.append(order)
+                self.asks = deque(sorted(self.asks, key=lambda o: (o.price, o.timestamp)))
+            self.match()
 
     def match(self):
         """
         Attempt to match top buy and sell orders. Executes trades if prices cross.
         """
-        while self.bids and self.asks and self.bids[0].price >= self.asks[0].price:
-            buy = self.bids[0]
-            sell = self.asks[0]
-            qty = min(buy.qty, sell.qty)
-            price = sell.price  # Price priority: taker pays maker's price
-            trade = {
-                'buy_order_id': buy.order_id,
-                'sell_order_id': sell.order_id,
-                'price': price,
-                'qty': qty,
-                'timestamp': max(buy.timestamp, sell.timestamp)
-            }
-            self.trades.append(trade)
-            buy.qty -= qty
-            sell.qty -= qty
-            if buy.qty == 0:
-                self.bids.popleft()
-            if sell.qty == 0:
-                self.asks.popleft()
+        with self._lock:
+            while self.bids and self.asks and self.bids[0].price >= self.asks[0].price:
+                buy = self.bids[0]
+                sell = self.asks[0]
+                qty = min(buy.qty, sell.qty)
+                price = sell.price  # Price priority: taker pays maker's price
+                trade = {
+                    'buy_order_id': buy.order_id,
+                    'sell_order_id': sell.order_id,
+                    'price': price,
+                    'qty': qty,
+                    'timestamp': max(buy.timestamp, sell.timestamp)
+                }
+                self.trades.append(trade)
+                buy.qty -= qty
+                sell.qty -= qty
+                if buy.qty == 0:
+                    self.bids.popleft()
+                if sell.qty == 0:
+                    self.asks.popleft()
 
     def get_top_of_book(self):
         """

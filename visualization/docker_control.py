@@ -5,7 +5,11 @@ Docker Control Utilities for Dashboard
 """
 import docker
 
-client = docker.from_env()
+try:
+    client = docker.from_env()
+except Exception as e:
+    print(f"Docker SDK initialization failed: {e}")
+    client = None
 
 CONTROLLER_SERVICE = {
     'sdn_controller.py': 'ryu',
@@ -53,8 +57,13 @@ def reset_demo():
             pass
 
 def get_container_status(name):
+    if client is None:
+        return 'docker unavailable'
     try:
         c = client.containers.get(name)
         return c.status
     except docker.errors.NotFound:
         return 'not found'
+    except Exception as e:
+        print(f"Error getting container status: {e}")
+        return 'error'

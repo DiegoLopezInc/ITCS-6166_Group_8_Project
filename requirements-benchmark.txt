@@ -2,7 +2,7 @@
 numpy
 matplotlib
 tabulate
-flask
+flask==2.2.5
 plotly
 requests
 docker

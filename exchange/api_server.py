@@ -14,6 +14,10 @@ app = Flask(__name__)
 order_book = OrderBook()
 scoring = Scoring()
 
+@app.errorhandler(Exception)
+def handle_exception(e):
+    return jsonify({'status': 'error', 'reason': str(e)}), 500
+
 @app.route('/submit_order', methods=['POST'])
 def submit_order():
     """
@@ -21,21 +25,24 @@ def submit_order():
     Expects JSON: {"order_id", "trader_id", "side", "price", "qty"}
     Returns: {"status", "order_id"}
     """
-    data = request.json
-    order = Order(
-        order_id=data.get('order_id'),
-        trader_id=data.get('trader_id'),
-        side=data.get('side'),
-        price=float(data.get('price')),
-        qty=int(data.get('qty')),
-        timestamp=time.time()
-    )
-    order_book.add_order(order)
-    # After matching, record new trades for scoring
-    new_trades = order_book.get_trades()[len(scoring.trades):]
-    for trade in new_trades:
-        scoring.record_trade(trade)
-    return jsonify({'status': 'accepted', 'order_id': order.order_id})
+    data = request.get_json(force=True)
+    try:
+        order = Order(
+            order_id=data['order_id'],
+            trader_id=data['trader_id'],
+            side=data['side'],
+            price=float(data['price']),
+            qty=int(data['qty']),
+            timestamp=time.time()
+        )
+        order_book.add_order(order)
+        # After matching, record new trades for scoring
+        new_trades = order_book.get_trades()[len(scoring.trades):]
+        for trade in new_trades:
+            scoring.record_trade(trade)
+        return jsonify({'status': 'accepted', 'order_id': order.order_id})
+    except Exception as e:
+        return jsonify({'status': 'error', 'reason': str(e)}), 400
 
 @app.route('/order_book', methods=['GET'])
 def get_order_book():
