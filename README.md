@@ -15,7 +15,7 @@ This project aims to develop a simulation to model and optimize a software-defin
 ---
 
 ### 3. Progress Summary  
-The project has progressed through initial planning, tool selection, and partial implementation of the simulation environment. Key milestones achieved include completing a literature review of SDN, digital twins, and multicast solutions (e.g., Jasper, CloudEx, DBO), selecting Mininet as the primary simulation tool, and drafting an 8-node gateway topology to emulate an SDN. For simulation, we are using Mininet with an OpenFlow SDN controller (Ryu) to model the network, while Python scripts are being developed to create a digital twin that mirrors the network’s state and to implement Jasper-inspired multicast trees for data dissemination. The network topology design and multicast optimization algorithms are in progress, with testing scheduled for the next phase using synthetic financial exchange traffic (e.g., stock price updates) to measure latency and fairness. The comparative analysis of fairness mechanisms and final validation remain pending, with the team aiming to integrate findings from all referenced papers by the project’s conclusion.
+The project has progressed through initial planning, tool selection, and partial implementation of the simulation environment. Key milestones achieved include completing a literature review of SDN, and multicast solutions (e.g., Jasper, CloudEx, DBO), selecting Mininet as the primary simulation tool, and drafting an 4-node star topology to emulate an SDN. For simulation, we are using Mininet with an OpenFlow SDN controller (Ryu) to model the network, while Python scripts are being developed to create a network and to implement Jasper-inspired multicast trees for data dissemination. The network topology design and multicast optimization algorithms are in progress, with testing scheduled for the next phase using synthetic financial exchange traffic (e.g., stock price updates) to measure latency and fairness. The comparative analysis of fairness mechanisms and final validation are complete, the team has integrated findings from all referenced papers.
 
 ---
 
@@ -24,14 +24,14 @@ The project has progressed through initial planning, tool selection, and partial
 | **Task**                  | **Assigned Member(s)** | **Status**    | **Comments**                          |  
 |---------------------------|-----------------------|---------------|---------------------------------------|  
 | Task 1: Literature review and project scoping | Diego         | Completed     | Reviewed Jasper, CloudEx, DBO papers  |  
-| Task 2: Simulation tool setup and topology design | Kushi          | Completed   | Mininet installed, 4-node gateway topology |  
+| Task 2: Simulation tool setup and topology design | Kushi          | Completed   | Mininet installed, 4-node star topology |  
 | Task 3: Multicast algorithm development | Sach          | Completed   | Coding Jasper’s tree in Python       |  
 | Task 4: Comparative analysis of fairness mechanisms | Thomas          | Completed       | Will simulate CloudEx, DBO approaches |  
 | Task 5: Stock price simulation | Diego          | Completed       | Will simulate CloudEx, DBO approaches using bots and simulated stock exchange |  
 | Task 6: Dashboard development | Diego          | Completed       | Developed a Flask-based dashboard to monitor simulation state |  
 
 - **Diego**: Conducted a comprehensive literature review, synthesizing insights from "Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud," "CloudEx: A Fair-Access Financial Exchange in the Cloud," and "DBO: Fairness for Cloud-Hosted Financial Exchanges" to define project objectives and scope.  
-- **Kushi**: Installed Mininet, configured an SDN controller (Ryu), and designed an 8-node gateway topology to simulate an SDN, integrating basic traffic generation scripts to approximate SDN behavior.  
+- **Kushi**: Installed Mininet, configured an SDN controller (Ryu), and designed an  4-node star topology to simulate an SDN, integrating basic traffic generation scripts to approximate SDN behavior.  
 - **Sach**: Began developing a multicast optimization algorithm in Python, adapting Jasper’s overlay tree structure for efficient and fair data delivery within the Mininet simulation.  
 - **Thomas**: Simulated fairness mechanisms from CloudEx (hold-and-release) and DBO (latency correction) within Mininet, preparing to integrate findings into the simulation for a comparative evaluation against Jasper’s approach.
 
@@ -48,7 +48,7 @@ The project has progressed through initial planning, tool selection, and partial
 ---
 
 ### 6. Additional Notes  
-To simulate the network, we use Mininet to create a virtual SDN with a **4-node star topology**, where each node represents a trading endpoint connected to a central SDN switch managed by a Ryu controller. The simulation includes three multicast optimization strategies: CloudEx, Jasper-inspired fair multicast, and DBO. The digital twin is implemented in Python, tracking the network’s real-time state and performance metrics such as end-to-end delay, jitter, and fairness (Jain’s Index). Synthetic financial data is generated and distributed using the multicast approaches, and results are visualized on a live dashboard. The dashboard also allows for real-time control of simulation parameters and displays a live competition leaderboard. Team meetings are held regularly to ensure progress and alignment.
+To simulate the network, we use Mininet to create a virtual SDN with a **4-node star topology**, where each node represents a trading endpoint connected to a central SDN switch managed by a Ryu controller. The simulation includes three multicast optimization strategies: CloudEx, Jasper-inspired fair multicast, and DBO. The digital twin is implemented in Python, tracking the network’s real-time state and performance metrics such as end-to-end delay, jitter, and fairness (Jain’s Fairness Index). Synthetic financial data is generated and distributed using the multicast approaches, and results are visualized on a live dashboard. The dashboard also allows for real-time control of simulation parameters and displays a live competition leaderboard. Team meetings are held regularly to ensure progress and alignment.
 
 ### 6.1 Simulation Approach Explained  
 1. **Tool Selection**: Mininet is chosen for SDN emulation, with Ryu for controller logic. The flexible topology allows us to approximate real exchange networks.
