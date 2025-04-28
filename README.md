@@ -58,6 +58,10 @@ To simulate the network, we use Mininet to create a virtual SDN with a **4-node 
 5. **Testing**: Synthetic financial traffic is injected, and all three mechanisms are benchmarked for latency, fairness, and throughput. Results are displayed on the dashboard, including a real-time leaderboard for trading bots.
 6. **Visualization**: The Flask-based dashboard, not working as intendend. 
 
+### 6.2 Notebook Visualization
+
+The notebook `results_visualization.ipynb` provides a visual analysis of the results from the benchmarking experiments. This is the best place to go to get an overview of the results from this project.
+
 ---
 
 ### 7. References  
