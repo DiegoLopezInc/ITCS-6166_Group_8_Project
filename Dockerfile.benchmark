@@ -5,8 +5,8 @@ WORKDIR /app
 # Copy only requirements file first to utilize Docker cache
 COPY requirements-benchmark.txt .
 ENV PYTHONPATH=/app
-RUN pip install --upgrade pip --no-cache-dir && \
-    pip install -r requirements-benchmark.txt --no-cache-dir
+RUN pip install --upgrade pip && \
+    pip install -r requirements-benchmark.txt
 
 # Copy the rest of the application
 COPY . .

@@ -24,10 +24,11 @@ The project has progressed through initial planning, tool selection, and partial
 | **Task**                  | **Assigned Member(s)** | **Status**    | **Comments**                          |  
 |---------------------------|-----------------------|---------------|---------------------------------------|  
 | Task 1: Literature review and project scoping | Diego         | Completed     | Reviewed Jasper, CloudEx, DBO papers  |  
-| Task 2: Simulation tool setup and topology design | Kushi          | Completed   | Mininet installed, 8-node gateway topology |  
-| Task 3: Multicast optimization algorithm development | Sach          | Completed   | Coding Jasper’s tree in Python       |  
+| Task 2: Simulation tool setup and topology design | Kushi          | Completed   | Mininet installed, 4-node gateway topology |  
+| Task 3: Multicast algorithm development | Sach          | Completed   | Coding Jasper’s tree in Python       |  
 | Task 4: Comparative analysis of fairness mechanisms | Thomas          | Completed       | Will simulate CloudEx, DBO approaches |  
 | Task 5: Stock price simulation | Diego          | Completed       | Will simulate CloudEx, DBO approaches using bots and simulated stock exchange |  
+| Task 6: Dashboard development | Diego          | Completed       | Developed a Flask-based dashboard to monitor simulation state |  
 
 - **Diego**: Conducted a comprehensive literature review, synthesizing insights from "Jasper: Scalable and Fair Multicast for Financial Exchanges in the Cloud," "CloudEx: A Fair-Access Financial Exchange in the Cloud," and "DBO: Fairness for Cloud-Hosted Financial Exchanges" to define project objectives and scope.  
 - **Kushi**: Installed Mininet, configured an SDN controller (Ryu), and designed an 8-node gateway topology to simulate an SDN, integrating basic traffic generation scripts to approximate SDN behavior.  
@@ -47,15 +48,16 @@ The project has progressed through initial planning, tool selection, and partial
 ---
 
 ### 6. Additional Notes  
-To simulate the network, we are using Mininet to create a virtual SDN with an 8-node ring topology, where each node represents an optical switch managed by an SDN controller (Ryu). The digital twin is implemented as a Python script that mirrors the network’s real-time state (e.g., link utilization, latency), updated via OpenFlow messages from Mininet. Multicast optimization, inspired by Jasper, is coded as a tree-building algorithm within the controller, distributing synthetic financial data to all nodes. We plan to measure performance metrics such as end-to-end delay, jitter, and fairness, comparing Jasper’s approach with CloudEx and DBO, and visualize results using Matplotlib. The team, meets twice weekly to ensure steady progress. We’d appreciate instructor feedback on the simulation’s realism, traffic design, and fairness comparison scope in the future.
+To simulate the network, we use Mininet to create a virtual SDN with a **4-node star topology**, where each node represents a trading endpoint connected to a central SDN switch managed by a Ryu controller. The simulation includes three multicast optimization strategies: CloudEx, Jasper-inspired fair multicast, and DBO. The digital twin is implemented in Python, tracking the network’s real-time state and performance metrics such as end-to-end delay, jitter, and fairness (Jain’s Index). Synthetic financial data is generated and distributed using the multicast approaches, and results are visualized on a live dashboard. The dashboard also allows for real-time control of simulation parameters and displays a live competition leaderboard. Team meetings are held regularly to ensure progress and alignment.
 
 ### 6.1 Simulation Approach Explained  
-1. **Tool Selection**: Mininet is chosen for its ability to emulate SDN environments, extended with Ryu for controller logic. Mininet’s flexibility allows us to approximate SDN behavior.
-2. **Topology**: An 8-node ring topology mimics a small-scale exchange network, with high-bandwidth links (e.g., 10 Gbps) and low latency (e.g., 1 ms) to simulate realistic network conditions.
-3. **Digital Twin**: A Python script queries Mininet via OpenFlow to track network state (e.g., bandwidth usage, queue lengths), serving as the digital twin for real-time monitoring and optimization.
-4. **Multicast Implementation**: Adapt Jasper’s multicast tree algorithm, coded in Python, to distribute financial data fairly across nodes, tested with iperf-generated traffic.
-5. **Testing**: Synthetic financial traffic (e.g., stock updates) is injected, and CloudEx and DBO mechanisms are simulated for comparison, measuring latency, jitter, and fairness.
-6. **Visualization**: Matplotlib will plot results, aiding in performance analysis. Creating a simulated stock exchange will help us test the fairness and latency of our multicast implementation.
+1. **Tool Selection**: Mininet is chosen for SDN emulation, with Ryu for controller logic. The flexible topology allows us to approximate real exchange networks.
+2. **Topology**: A **4-node star topology** is used for simplicity and speed, with each endpoint representing a trading engine or bot.
+3. **Digital Twin**: Python scripts monitor and control the Mininet network, collecting metrics and enabling real-time parameter adjustment via the dashboard.
+4. **Multicast Implementation**: Three multicast controllers (CloudEx, Jasper, DBO) are implemented in Python, each with its own fairness and performance features. The controllers can be switched live from the dashboard.
+5. **Testing**: Synthetic financial traffic is injected, and all three mechanisms are benchmarked for latency, fairness, and throughput. Results are displayed on the dashboard, including a real-time leaderboard for trading bots.
+6. **Visualization**: The Flask-based dashboard provides live charts, simulation parameter controls, and a competition leaderboard, enabling interactive experimentation and analysis.
+
 ---
 
 ### 7. References  
