@@ -22,102 +22,232 @@ DASHBOARD_HTML = '''
 <html>
 <head>
     <title>Trading Competition Dashboard</title>
-    <meta http-equiv="refresh" content="2">
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        body { font-family: Arial; }
-        table { border-collapse: collapse; width: 40%; margin: 20px; }
-        th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
-        th { background: #222; color: #fff; }
-        .controls { margin: 20px; }
-        .controls form { display: inline-block; margin-right: 20px; }
-        .chart { width: 60%; margin: 20px auto; }
-        .nav { margin: 20px; }
-        .nav a { margin-right: 20px; font-weight: bold; color: #337ab7; text-decoration: none; }
+        body { font-family: Arial; background: #f8f9fa; }
+        .container { margin-top: 30px; }
+        .card { margin-bottom: 24px; }
+        .navbar { margin-bottom: 30px; }
+        .table th, .table td { vertical-align: middle; }
+        .btn-primary, .btn-danger { min-width: 120px; }
+        .chart { margin-top: 20px; }
+        .form-group { margin-bottom: 1rem; }
     </style>
 </head>
 <body>
-    <div class="nav">
-        <a href="/">Dashboard</a>
-        <a href="/leaderboard">Competition Leaderboard</a>
-    </div>
-    <h1>Trading Competition Dashboard</h1>
-    <div class="chart">
-        <h2>Simulation Overview</h2>
-        <table>
-            <tr><th>Simulation</th><th>Latency (ms)</th><th>Fairness Index</th><th>Status</th></tr>
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+  <a class="navbar-brand font-weight-bold" href="/">Trading Dashboard</a>
+  <div class="collapse navbar-collapse">
+    <ul class="navbar-nav mr-auto">
+      <li class="nav-item"><a class="nav-link" href="/">Dashboard</a></li>
+      <li class="nav-item"><a class="nav-link" href="/leaderboard">Competition Leaderboard</a></li>
+    </ul>
+  </div>
+</nav>
+<div class="container">
+  <div class="row">
+    <div class="col-md-8">
+      <div class="card shadow">
+        <div class="card-header bg-primary text-white">Simulation Overview</div>
+        <div class="card-body">
+          <table class="table table-bordered table-hover">
+            <thead class="thead-light">
+              <tr><th>Simulation</th><th>Latency (ms)</th><th>Fairness Index</th><th>Status</th></tr>
+            </thead>
+            <tbody>
             {% for sim in simulations %}
             <tr><td>{{sim['name']}}</td><td>{{sim['latency']}}</td><td>{{sim['fairness']}}</td><td>{{sim['status']}}</td></tr>
             {% endfor %}
-        </table>
-    </div>
-    <div class="controls">
-        <h2>Feature Tinkering</h2>
-        <form method="post" action="/set_feature">
-            <label>Clock Sync Error (CloudEx):</label>
-            <input type="number" step="0.01" name="clock_sync_error" value="{{features.clock_sync_error}}"> ms
-            <br>
-            <label>Fairness Window (Jasper):</label>
-            <input type="number" step="0.01" name="jasper_fairness_window" value="{{features.jasper_fairness_window}}"> ms
-            <br>
-            <label>Enable Hold-and-Release (Jasper):</label>
-            <input type="checkbox" name="jasper_hold_release" {% if features.jasper_hold_release %}checked{% endif %}>
-            <br>
-            <label>Enable Logical Clocks (DBO):</label>
-            <input type="checkbox" name="dbo_logical_clocks" {% if features.dbo_logical_clocks %}checked{% endif %}>
-            <br>
-            <button type="submit">Apply Features</button>
-        </form>
-    </div>
-    <h2>Demo Stock Trading Competition</h2>
-    <form method="post" action="/start_competition"><button type="submit">Start Competition</button></form>
-    <form method="post" action="/stop_competition"><button type="submit">Stop Competition</button></form>
-    <div class="chart">
-        <h2>Leaderboard</h2>
-        <table>
-            <tr><th>Rank</th><th>Trader</th><th>P&L</th></tr>
-            {% for rank, (trader, pnl) in enumerate(leaderboard, 1) %}
-            <tr><td>{{rank}}</td><td>{{trader}}</td><td>{{'%.2f' % pnl}}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card shadow">
+        <div class="card-header bg-info text-white">Leaderboard</div>
+        <div class="card-body">
+          <table class="table table-striped table-bordered">
+            <thead class="thead-light">
+              <tr><th>Rank</th><th>Trader</th><th>P&amp;L</th></tr>
+            </thead>
+            <tbody id="leaderboard-tbody">
+            {% for item in leaderboard %}
+            <tr><td>{{ loop.index }}</td><td>{{ item[0] }}</td><td>{{ '%.2f' % item[1] }}</td></tr>
             {% endfor %}
-        </table>
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card shadow">
+        <div class="card-header bg-secondary text-white">Recent Trades</div>
+        <div class="card-body">
+          <table class="table table-sm table-hover">
+            <thead class="thead-light">
+              <tr><th>Buy</th><th>Sell</th><th>Price</th><th>Qty</th></tr>
+            </thead>
+            <tbody id="trades-tbody">
+            {% for trade in trades[-10:] %}
+            <tr><td>{{trade['buy_order_id']}}</td><td>{{trade['sell_order_id']}}</td><td>{{trade['price']}}</td><td>{{trade['qty']}}</td></tr>
+            {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+      <div class="card shadow chart">
+        <div class="card-header bg-success text-white">Market Data Chart</div>
+        <div class="card-body">{{ market_chart|safe }}</div>
+      </div>
+      <div class="card shadow chart">
+        <div class="card-header bg-warning text-dark">Bot Activity</div>
+        <div class="card-body">{{ bot_chart|safe }}</div>
+      </div>
+      <div class="card mt-4">
+        <div class="card-header bg-dark text-white">Bot Output</div>
+        <div class="card-body">
+          <pre id="bot-output" style="height:200px;overflow:auto;background:#222;color:#eee"></pre>
+        </div>
+      </div>
+      <div class="card mt-4">
+        <div class="card-header bg-success text-white">Recent Results</div>
+        <div class="card-body">
+          <div id="results-output" style="height:200px;overflow:auto;background:#f8fff8;color:#222;font-family:monospace;font-size:13px"></div>
+        </div>
+      </div>
     </div>
-    <h2>Recent Trades</h2>
-    <table>
-        <tr><th>Buy</th><th>Sell</th><th>Price</th><th>Qty</th></tr>
-        {% for trade in trades[-10:] %}
-        <tr><td>{{trade['buy_order_id']}}</td><td>{{trade['sell_order_id']}}</td><td>{{trade['price']}}</td><td>{{trade['qty']}}</td></tr>
-        {% endfor %}
-    </table>
-    <div class="chart">
-        <h2>Market Data Chart</h2>
-        {{ market_chart|safe }}
+    <div class="col-md-4">
+      <div class="card shadow">
+        <div class="card-header bg-dark text-white">Feature Tinkering</div>
+        <div class="card-body">
+          <form method="post" action="/set_feature">
+            <div class="form-group">
+              <label>Clock Sync Error (CloudEx):
+                <span data-toggle="tooltip" title="Artificial clock skew for CloudEx simulation.">
+                  <i class="fa fa-info-circle text-info"></i>
+                </span>
+              </label>
+              <input type="number" step="0.01" class="form-control" name="clock_sync_error" value="{{features.clock_sync_error}}"> ms
+            </div>
+            <div class="form-group">
+              <label>Fairness Window (Jasper):</label>
+              <input type="number" step="0.01" class="form-control" name="jasper_fairness_window" value="{{features.jasper_fairness_window}}"> ms
+            </div>
+            <div class="form-group form-check">
+              <input type="checkbox" class="form-check-input" name="jasper_hold_release" id="jasper_hold_release" {% if features.jasper_hold_release %}checked{% endif %}>
+              <label class="form-check-label" for="jasper_hold_release">Enable Hold-and-Release (Jasper)</label>
+            </div>
+            <div class="form-group form-check">
+              <input type="checkbox" class="form-check-input" name="dbo_logical_clocks" id="dbo_logical_clocks" {% if features.dbo_logical_clocks %}checked{% endif %}>
+              <label class="form-check-label" for="dbo_logical_clocks">Enable Logical Clocks (DBO)</label>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Apply Features</button>
+          </form>
+        </div>
+      </div>
+      <div class="card shadow mt-4">
+        <div class="card-header bg-danger text-white">Competition Controls</div>
+        <div class="card-body d-flex flex-column">
+          <form method="post" action="/start_competition" class="mb-2"><button type="submit" class="btn btn-success btn-block">Start Competition</button></form>
+          <form method="post" action="/stop_competition"><button type="submit" class="btn btn-danger btn-block">Stop Competition</button></form>
+        </div>
+      </div>
+      <div class="card shadow mt-4">
+        <div class="card-header bg-light">Demo Controls</div>
+        <div class="card-body">
+          <form method="post" action="/set_controller" class="mb-2">
+            <div class="form-group">
+              <label for="controller">Controller:</label>
+              <select name="controller" id="controller" class="form-control mb-2">
+                <option value="sdn_controller.py" {% if controller == 'sdn_controller.py' %}selected{% endif %}>SDN Controller</option>
+                <option value="jasper_multicast_controller.py" {% if controller == 'jasper_multicast_controller.py' %}selected{% endif %}>Jasper Multicast</option>
+                <option value="dbo_multicast_controller.py" {% if controller == 'dbo_multicast_controller.py' %}selected{% endif %}>DBO Multicast</option>
+              </select>
+              <button type="submit" class="btn btn-info btn-block">Switch Controller</button>
+            </div>
+          </form>
+          <form method="post" action="/reset_demo" class="mb-2"><button type="submit" class="btn btn-warning btn-block">Reset Demo</button></form>
+          <form method="post" action="/pause_marketdata" class="mb-2"><button type="submit" class="btn btn-secondary btn-block">Pause Marketdata</button></form>
+          <form method="post" action="/resume_marketdata"><button type="submit" class="btn btn-secondary btn-block">Resume Marketdata</button></form>
+        </div>
+        <div class="card-footer">
+          <p><b>Active Controller:</b> {{controller}}</p>
+          <p><b>Container Status:</b> Ryu: {{ryu_status}}, Marketdata: {{marketdata_status}}</p>
+        </div>
+      </div>
     </div>
-    <div class="chart">
-        <h2>Bot Activity</h2>
-        {{ bot_chart|safe }}
-    </div>
-    <div class="controls">
-        <h2>Demo Controls</h2>
-        <form method="post" action="/set_controller">
-            <label for="controller">Controller:</label>
-            <select name="controller" id="controller">
-                <option value="sdn_controller.py" {% if controller == 'sdn_controller.py' %}selected{% endif %}>CloudEx (Basic)</option>
-                <option value="jasper_multicast_controller.py" {% if controller == 'jasper_multicast_controller.py' %}selected{% endif %}>Jasper</option>
-                <option value="dbo_multicast_controller.py" {% if controller == 'dbo_multicast_controller.py' %}selected{% endif %}>DBO</option>
-            </select>
-            <button type="submit">Switch Controller</button>
-        </form>
-        <form method="post" action="/pause_marketdata">
-            <button type="submit">Pause Market Data</button>
-        </form>
-        <form method="post" action="/resume_marketdata">
-            <button type="submit">Resume Market Data</button>
-        </form>
-        <form method="post" action="/reset_demo">
-            <button type="submit">Reset Demo</button>
-        </form>
-    </div>
-    <p><b>Active Controller:</b> {{controller}}</p>
-    <p><b>Container Status:</b> Ryu: {{ryu_status}}, Marketdata: {{marketdata_status}}</p>
+  </div>
+</div>
+<!-- Bootstrap JS, Popper.js, and jQuery -->
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/popper.js@1.16.0/dist/umd/popper.min.js"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+<script>
+  $(function () {
+    $('[data-toggle="tooltip"]').tooltip();
+  });
+</script>
+<script>
+  function updateLeaderboard() {
+    fetch('/api/leaderboard')
+      .then(response => response.json())
+      .then(data => {
+        let tbody = document.getElementById('leaderboard-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.forEach(function(item, idx) {
+          let row = `<tr><td>${idx+1}</td><td>${item[0]}</td><td>${item[1].toFixed(2)}</td></tr>`;
+          tbody.innerHTML += row;
+        });
+      });
+  }
+  function updateTrades() {
+    fetch('/api/trades')
+      .then(response => response.json())
+      .then(data => {
+        let tbody = document.getElementById('trades-tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+        data.slice(-10).forEach(function(trade) {
+          let row = `<tr><td>${trade.buy_order_id}</td><td>${trade.sell_order_id}</td><td>${trade.price}</td><td>${trade.qty}</td></tr>`;
+          tbody.innerHTML += row;
+        });
+      });
+  }
+  function updateBotOutput() {
+    fetch('/api/bot_output')
+      .then(response => response.json())
+      .then(data => {
+        document.getElementById('bot-output').textContent = data.lines.join('');
+      });
+  }
+  function updateResults() {
+    fetch('/api/results')
+      .then(response => response.json())
+      .then(data => {
+        let el = document.getElementById('results-output');
+        let html = '';
+        data.results.forEach(function(res) {
+          html += `<b>${res.filename}</b><br><table border='1' style='margin-bottom:8px;'>`;
+          res.rows.forEach(function(row) {
+            html += '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+          });
+          html += '</table>';
+        });
+        el.innerHTML = html;
+      });
+  }
+  setInterval(function() {
+    updateLeaderboard();
+    updateTrades();
+    updateBotOutput();
+    updateResults();
+  }, 2000);
+  document.addEventListener('DOMContentLoaded', function() {
+    updateLeaderboard();
+    updateTrades();
+    updateBotOutput();
+    updateResults();
+  });
+</script>
 </body>
 </html>
 '''
@@ -127,7 +257,6 @@ LEADERBOARD_HTML = '''
 <html>
 <head>
     <title>Competition Leaderboard</title>
-    <meta http-equiv="refresh" content="2">
     <style>
         body { font-family: Arial; }
         table { border-collapse: collapse; width: 40%; margin: 40px auto; }
@@ -145,9 +274,9 @@ LEADERBOARD_HTML = '''
     </div>
     <h1>Competition Leaderboard</h1>
     <table>
-        <tr><th>Rank</th><th>Trader</th><th>P&L</th></tr>
-        {% for rank, (trader, pnl) in enumerate(leaderboard, 1) %}
-        <tr><td>{{rank}}</td><td>{{trader}}</td><td>{{'%.2f' % pnl}}</td></tr>
+        <tr><th>Rank</th><th>Trader</th><th>P&amp;L</th></tr>
+        {% for item in leaderboard %}
+        <tr><td>{{ loop.index }}</td><td>{{ item[0] }}</td><td>{{ '%.2f' % item[1] }}</td></tr>
         {% endfor %}
     </table>
 </body>
@@ -171,6 +300,21 @@ features = {
     'dbo_logical_clocks': True
 }
 competition_running = False
+
+@app.route('/api/results')
+def api_results():
+    import glob
+    import csv
+    results_dir = os.path.join(os.path.dirname(__file__), '..', 'results')
+    # Find all csv files, sort by modified time descending
+    csv_files = sorted(glob.glob(os.path.join(results_dir, '*.csv')), key=os.path.getmtime, reverse=True)[:5]
+    all_results = []
+    for path in csv_files:
+        with open(path, 'r') as f:
+            reader = csv.reader(f)
+            rows = list(reader)
+            all_results.append({'filename': os.path.basename(path), 'rows': rows})
+    return jsonify({'results': all_results})
 
 @app.route('/', methods=['GET', 'POST'])
 def dashboard():
@@ -205,34 +349,43 @@ def leaderboard_screen():
 
 @app.route('/set_controller', methods=['POST'])
 def set_controller():
+    print("[DEBUG] set_controller route called")
     global ACTIVE_CONTROLLER
     controller = request.form.get('controller')
+    print(f"[DEBUG] Controller selected: {controller}")
     ACTIVE_CONTROLLER = controller
-    switch_controller(controller)
+    result = switch_controller(controller)
+    print(f"[DEBUG] switch_controller() returned: {result}")
     return redirect(url_for('dashboard'))
 
 @app.route('/pause_marketdata', methods=['POST'])
 def pause_marketdata():
+    print("[DEBUG] pause_marketdata route called")
     global MARKETDATA_PAUSED
     MARKETDATA_PAUSED = True
-    dc_pause()
+    result = dc_pause()
+    print(f"[DEBUG] dc_pause() returned: {result}")
     return redirect(url_for('dashboard'))
 
 @app.route('/resume_marketdata', methods=['POST'])
 def resume_marketdata():
+    print("[DEBUG] resume_marketdata route called")
     global MARKETDATA_PAUSED
     MARKETDATA_PAUSED = False
-    dc_resume()
+    result = dc_resume()
+    print(f"[DEBUG] dc_resume() returned: {result}")
     return redirect(url_for('dashboard'))
 
 @app.route('/reset_demo', methods=['POST'])
 def reset_demo():
+    print("[DEBUG] reset_demo route called")
     order_book.trades.clear()
     order_book.bids.clear()
     order_book.asks.clear()
     scoring.pnl.clear()
     scoring.trades.clear()
-    dc_reset()
+    result = dc_reset()
+    print(f"[DEBUG] dc_reset() returned: {result}")
     return redirect(url_for('dashboard'))
 
 @app.route('/api/leaderboard')
@@ -243,48 +396,68 @@ def api_leaderboard():
 def api_trades():
     return jsonify(order_book.get_trades())
 
+@app.route('/api/bot_output')
+def api_bot_output():
+    try:
+        log_path = os.path.join(os.path.dirname(__file__), '..', 'scripts', 'bot_output.log')
+        with open(log_path, 'r') as f:
+            lines = f.readlines()[-30:]  # Show last 30 lines
+        return jsonify({'lines': lines})
+    except Exception as e:
+        return jsonify({'lines': [f"Error: {e}\n"]})
+
 @app.route('/set_feature', methods=['POST'])
 def set_feature():
+    print("[DEBUG] set_feature route called")
     global features
-    # Get new values from form
     features['clock_sync_error'] = float(request.form.get('clock_sync_error', features['clock_sync_error']))
     features['jasper_fairness_window'] = float(request.form.get('jasper_fairness_window', features['jasper_fairness_window']))
     features['jasper_hold_release'] = 'jasper_hold_release' in request.form
     features['dbo_logical_clocks'] = 'dbo_logical_clocks' in request.form
-
-    # --- Actually update running controllers ---
-    # CloudEx (sdn_controller.py)
+    print(f"[DEBUG] Features updated: {features}")
     try:
-        requests.post('http://localhost:5005/api/set_artificial_delay', json={'delay_ms': features['clock_sync_error']})
-        # Optionally set clock offsets per port if you expose those controls
+        resp1 = requests.post('http://localhost:5005/api/set_clock_sync_error', json={'error': features['clock_sync_error']})
+        print(f"[DEBUG] set_clock_sync_error resp: {resp1.status_code}")
     except Exception as e:
-        print(f"[WARN] Could not update CloudEx artificial delay: {e}")
-    # Jasper (jasper_multicast_controller.py)
+        print(f"[WARN] Could not update CloudEx clock sync: {e}")
     try:
-        requests.post('http://localhost:5006/api/set_hold_release_deadline', json={'deadline_ms': features['jasper_fairness_window']})
-        requests.post('http://localhost:5006/api/set_hold_release', json={'enabled': features['jasper_hold_release']})
+        resp2 = requests.post('http://localhost:5006/api/set_hold_release', json={'enabled': features['jasper_hold_release']})
+        print(f"[DEBUG] set_hold_release resp: {resp2.status_code}")
     except Exception as e:
         print(f"[WARN] Could not update Jasper features: {e}")
-    # DBO (dbo_multicast_controller.py)
     try:
-        requests.post('http://localhost:5007/api/set_logical_clocks', json={'enabled': features['dbo_logical_clocks']})
+        resp3 = requests.post('http://localhost:5007/api/set_logical_clocks', json={'enabled': features['dbo_logical_clocks']})
+        print(f"[DEBUG] set_logical_clocks resp: {resp3.status_code}")
     except Exception as e:
         print(f"[WARN] Could not update DBO logical clocks: {e}")
     return redirect(url_for('dashboard'))
 
 @app.route('/start_competition', methods=['POST'])
 def start_competition():
-    global competition_running
-    competition_running = True
-    # TODO: Start competition logic (bots, order book, etc.)
-    return redirect(url_for('dashboard'))
+    try:
+        print("[DEBUG] start_competition route called")
+        global competition_running
+        competition_running = True
+
+        print("[DEBUG] About to import start_bots")
+        from scripts.traffic_generator import start_bots
+        print("[DEBUG] Imported start_bots, about to start thread")
+        threading.Thread(target=start_bots, daemon=True).start()
+        print("[DEBUG] Thread started, about to reset order book")
+        order_book.reset()
+        print("[DEBUG] Competition started: bots launched, order book reset")
+        return redirect(url_for('dashboard'))
+    except Exception as e:
+        import traceback
+        print("[ERROR] Exception in start_competition:", e)
+        traceback.print_exc()
+        return "Internal Server Error: " + str(e), 500
 
 @app.route('/stop_competition', methods=['POST'])
 def stop_competition():
+    print("[DEBUG] stop_competition route called")
     global competition_running
     competition_running = False
-    # Properly stop competition logic (placeholder for now)
-    # For example, signal bots or backend to stop
     print("Competition stopped by user.")
     return redirect(url_for('dashboard'))
 

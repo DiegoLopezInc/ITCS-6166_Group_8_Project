@@ -10,6 +10,8 @@ services:
       - ./topology:/app/topology
       - ./scripts:/app/scripts
       - ./requirements.txt:/app/requirements.txt
+    ports:
+      - "6653:6653"
     tty: true
 
   ryu:
@@ -21,6 +23,8 @@ services:
     volumes:
       - ./scripts:/app/scripts
       - ./requirements-ryu.txt:/app/requirements-ryu.txt
+    ports:
+      - "6633:6633"
     command: ["ryu-manager", "scripts/sdn_controller.py"]
 
   ryu_jasper:
@@ -77,7 +81,6 @@ services:
       - ./competition:/app/competition
       - ./exchange:/app/exchange
       - /var/run/docker.sock:/var/run/docker.sock
-    network_mode: host
     depends_on:
       - api
 

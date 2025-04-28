@@ -36,16 +36,32 @@ def switch_controller(controller_script):
 def pause_marketdata():
     try:
         c = client.containers.get('marketdata')
+        if c.status != 'running':
+            print("[WARN] Marketdata container is not running and cannot be paused.")
+            return False
         c.pause()
+        return True
     except docker.errors.NotFound:
-        pass
+        print("[WARN] Marketdata container not found.")
+        return False
+    except docker.errors.APIError as e:
+        print(f"[WARN] Could not pause Marketdata container: {e}")
+        return False
 
 def resume_marketdata():
     try:
         c = client.containers.get('marketdata')
+        if c.status != 'paused':
+            print("[WARN] Marketdata container is not paused and cannot be unpaused.")
+            return False
         c.unpause()
+        return True
     except docker.errors.NotFound:
-        pass
+        print("[WARN] Marketdata container not found.")
+        return False
+    except docker.errors.APIError as e:
+        print(f"[WARN] Could not unpause Marketdata container: {e}")
+        return False
 
 def reset_demo():
     # Optionally restart all bots, api, marketdata, scoring

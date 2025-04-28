@@ -1,0 +1,15 @@
+Parameter,Value
+Implementation,basic_multicast
+name,High Frequency
+duration,10
+message_rate,200
+message_size,100
+Average Latency (ms),1.4119005456950324
+Fairness Index,0.9106986808770607
+Bandwidth Efficiency (%),61.57965480503521
+
+Host,Latency (ms)
+h1,2.1535284013784652
+h2,1.3242951724699588
+h3,1.156795497337386
+h4,1.0129831115943202

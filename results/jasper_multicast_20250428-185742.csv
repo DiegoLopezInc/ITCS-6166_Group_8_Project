@@ -1,0 +1,15 @@
+Parameter,Value
+Implementation,jasper_multicast
+name,High Frequency
+duration,10
+message_rate,200
+message_size,100
+Average Latency (ms),1.175137643708872
+Fairness Index,0.9938542769357541
+Bandwidth Efficiency (%),87.52709437071655
+
+Host,Latency (ms)
+h1,1.0779046571115614
+h2,1.3183069527770224
+h3,1.1918611281656726
+h4,1.112477836781232

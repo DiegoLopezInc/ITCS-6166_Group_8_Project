@@ -9,6 +9,12 @@ import socket
 import struct
 import time
 import argparse
+import threading
+import logging
+
+logging.basicConfig(filename='/app/scripts/bot_output.log',
+                    format='[BOT %(threadName)s] %(message)s',
+                    level=logging.INFO)
 
 class FinancialTrafficGenerator:
     """
@@ -93,6 +99,33 @@ class FinancialTrafficGenerator:
         """Close the socket"""
         self.sock.close()
 
+def start_bots():
+    """
+    Start 4 traffic generator bots with random rates and message sizes.
+    """
+    rates = [10, 100, 200]
+    sizes = [10, 100, 1000]
+    bot_threads = []
+    for i in range(4):
+        rate = random.choice(rates)
+        size = random.choice(sizes)
+        count = 100  # Number of updates per bot
+        def bot_task(rate=rate, size=size, count=count):
+            gen = FinancialTrafficGenerator(MULTICAST_GRP, MULTICAST_PORT)
+            try:
+                logging.info(f"Bot starting: rate={rate}, size={size}, count={count}")
+                gen.send_updates(count=count, rate=rate, size_bytes=size)
+                logging.info(f"Bot finished: rate={rate}, size={size}, count={count}")
+            finally:
+                gen.close()
+        t = threading.Thread(target=bot_task, daemon=True)
+        t.start()
+        bot_threads.append(t)
+    print(f"[DEBUG] Started 4 bots with random rates and sizes.")
+    # Optionally join bots if you want to wait for completion
+    # for t in bot_threads:
+    #     t.join()
+
 def main():
     """Main function for standalone usage"""
     parser = argparse.ArgumentParser(description='Financial Exchange Traffic Generator')
@@ -124,4 +157,5 @@ if __name__ == '__main__':
         sock.sendto(msg.encode(), (MULTICAST_GRP, MULTICAST_PORT))
         print(f"Market data sent: {msg}")
         time.sleep(0.5)
+    start_bots()
     main()

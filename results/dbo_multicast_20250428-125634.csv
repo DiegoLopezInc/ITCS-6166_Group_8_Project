@@ -1,0 +1,23 @@
+Parameter,Value
+Implementation,dbo_multicast
+name,Large Message
+duration,10
+message_rate,10
+message_size,1000
+Average Latency (ms),1.4045946794185606
+Fairness Index,0.9411228297619428
+Bandwidth Efficiency (%),87.60949716325544
+Delivery Clock Fairness,0.49930271310611224
+Delivery Clock Window (ms),743.363727102503
+
+Host,Latency (ms)
+h1,1.71212078730428
+h2,1.0553631471479958
+h3,1.0537655280597318
+h4,1.7971292551622349
+
+Host,Delivery Clock (ms)
+h1,658.3552592445483
+h2,1.5976190882640573
+h3,0.0
+h4,743.363727102503
