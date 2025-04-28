@@ -93,4 +93,4 @@ This document summarizes how features from the CloudEx, Jasper, and DBO papers a
 
 ---
 
-**For further details on the specific algorithms or a summary of the research papers, refer to the `paper_implementation` directory or request a summary.**
+**For further details on the specific algorithms or a summary of the research papers, refer to the `doc` directory or request a summary.**
