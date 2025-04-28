@@ -10,7 +10,7 @@ Submission Date: April 28, 2025
 ---
 
 ### 2. Project Abstract  
-This project aims to develop a simulation to model and optimize a software-defined network (SDN) for financial exchanges, integrating scalable multicast techniques inspired by recent cloud-based solutions like Jasper. The core functionalities include creating a virtual SDN replica, implementing multicast optimization algorithms for fair and low-latency data delivery, and comparing these with existing approaches such as CloudEx and DBO. The intended outcome is a simulation demonstrating how digital twin technology and multicast enhancements can improve bandwidth efficiency, reduce latency, and ensure fairness in cloud-hosted financial systems.
+This project aims to develop a simulation to model and optimize a software-defined network (SDN) for financial exchanges, integrating scalable multicast techniques inspired by recent cloud-based solutions like Jasper. The core functionalities include creating a virtual SDN replica, implementing multicast optimization algorithms for fair and low-latency data delivery, and comparing these with existing approaches such as CloudEx and DBO. The intended outcome is a simulation demonstrating how multicast enhancements can improve bandwidth efficiency, reduce latency, and ensure fairness in cloud-hosted financial systems.
 
 ---
 
